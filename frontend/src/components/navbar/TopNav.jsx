@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { LogOut } from 'lucide-react';
+import { GraduationCap, LogOut } from 'lucide-react';
 
 const DEFAULT_AVATAR =
   'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop&crop=face';
@@ -71,7 +71,8 @@ const TopNav = () => {
       <div className="mx-auto flex w-full max-w-[1200px] items-center justify-between px-8">
         {/* Logo */}
         <div className="flex flex-1 items-center">
-          <Link to="/" className="text-2xl font-extrabold tracking-tight text-primary">
+          <Link to="/" className="flex items-center gap-2 text-2xl font-extrabold tracking-tight text-primary">
+            <GraduationCap className="h-8 w-8 text-primary" strokeWidth={2.25} />
             StudyBridge
           </Link>
         </div>
@@ -97,7 +98,7 @@ const TopNav = () => {
         </nav>
 
         {/* Right */}
-        <div className="flex flex-1 items-center justify-end gap-4">
+        <div className="flex flex-1 items-center justify-end gap-3">
           {!isLoggedIn ? (
             <Button
               to="/login"

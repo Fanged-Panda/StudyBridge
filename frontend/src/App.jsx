@@ -1,8 +1,16 @@
-import { useEffect } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import MainLayout from './layouts/MainLayout';
 import Home from './pages/Home';
-import { LoginPage, ProfilePage } from './features/auth';
+
+// Route-level code splitting: auth + profile load on demand, keeping the Home
+// bundle (above-the-fold) as small and fast as possible.
+const LoginPage = lazy(() =>
+  import('./features/auth').then((mod) => ({ default: mod.LoginPage })),
+);
+const ProfilePage = lazy(() =>
+  import('./features/auth').then((mod) => ({ default: mod.ProfilePage })),
+);
 
 // Scrolls to the top whenever the route changes (React Router preserves scroll by default)
 const ScrollToTop = () => {
@@ -27,6 +35,16 @@ const RequireAuth = ({ children }) => {
   return children;
 };
 
+// Branded fallback shown while a lazy route chunk loads.
+const PageLoader = () => (
+  <div className="flex min-h-screen items-center justify-center bg-background">
+    <div className="flex flex-col items-center gap-4">
+      <div className="h-12 w-12 animate-spin rounded-full border-4 border-secondary border-t-accent" />
+      <p className="text-sm font-bold uppercase tracking-[0.2em] text-primary">StudyBridge</p>
+    </div>
+  </div>
+);
+
 const EmptyPage = ({ title }) => {
   return (
     <section className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
@@ -41,6 +59,7 @@ function App() {
   return (
     <BrowserRouter>
       <ScrollToTop />
+      <Suspense fallback={<PageLoader />}>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route element={<MainLayout />}>
@@ -52,6 +71,7 @@ function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>
+      </Suspense>
     </BrowserRouter>
   );
 }

@@ -229,3 +229,38 @@ Full schema: [`backend/prisma/schema.prisma`](backend/prisma/schema.prisma)
 ## 📄 License
 
 MIT
+
+## 📱 Progressive Web App (PWA)
+
+StudyBridge ships as an installable PWA built with `vite-plugin-pwa` (Workbox, `injectManifest` mode).
+
+### Features
+
+- **Installable** — Chrome/Edge/Android show an install prompt (custom `InstallButton` in the top nav, driven by `usePwaInstall`); `appinstalled` hides it afterwards.
+- **Standalone window** — `display: standalone` in the manifest; splash screen + theme color from `#1a2b48` / `#f8f9ff`.
+- **Offline support** — the app shell and static assets are precached. Online navigations fetch fresh HTML (`NetworkFirst`); offline, cached pages keep working; uncached routes fall back to the branded [`offline.html`](frontend/public/offline.html). An in-app banner (`OfflineBanner`) appears when the connection drops.
+- **Auto-updates** — `registerType: 'autoUpdate'` + `skipWaiting`/`clientsClaim`: a new deployment's service worker takes over on the next load; old precaches are cleaned automatically.
+- **API never cached** — all `/api/*` requests (login, register, profile, authenticated calls) run `NetworkOnly`. Only safe static assets are cached: hashed JS/CSS, images (`CacheFirst`), and Google Fonts (`StaleWhileRevalidate`).
+- **Routing** — client-side `BrowserRouter` is untouched; the Vercel SPA rewrite already serves `index.html` for all routes, and `sw.js`/`manifest.webmanifest`/`offline.html` are served with no-cache headers.
+
+### Icons & assets
+
+`frontend/scripts/generate-icons.mjs` rasterizes `public/logo.svg` + `public/logo-maskable.svg` (via `sharp`) into every required size (72–512, maskable 192/512, apple-touch 180, favicons, manifest screenshots). Regenerate after brand changes:
+
+```bash
+cd frontend && npm run icons
+```
+
+### Push notifications (prepared, not live)
+
+The service worker (`frontend/src/pwa/sw.js`) already handles `push` + `notificationclick`. Client helpers live in `frontend/src/pwa/notifications.js` (`requestNotificationPermission`, `subscribeToPush`, VAPID key conversion). To go live: add a web-push endpoint on the Render backend, expose a VAPID public key, and call `subscribeToPush(vapidKey)` from the UI.
+
+### Testing the PWA locally
+
+```bash
+cd frontend
+npm run build          # emits dist/, sw.js, manifest.webmanifest
+npm run preview        # served at http://localhost:4173
+```
+
+Then open the preview URL in Chrome → DevTools → Application → Manifest / Service Worker, or run Lighthouse (`npx lighthouse http://localhost:4173 --view`) to check installability and scores.

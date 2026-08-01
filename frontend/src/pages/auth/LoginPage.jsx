@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { GraduationCap } from 'lucide-react';
 import api from '../../services/api';
 import SignUpWizard from '../../features/auth/SignUpWizard';
 
@@ -89,7 +90,8 @@ const LoginPage = () => {
     <div className="font-['Plus_Jakarta_Sans'] h-screen w-screen bg-background overflow-hidden">
       {/* StudyBridge Logo — matches TopNav position exactly, teal accent */}
       <div className="fixed top-0 left-0 z-[200] pointer-events-none flex items-center h-20 px-8">
-        <Link to="/" className="text-2xl font-extrabold tracking-tight text-accent pointer-events-auto">
+        <Link to="/" className="flex items-center gap-2 text-2xl font-extrabold tracking-tight text-accent pointer-events-auto">
+          <GraduationCap className="h-8 w-8 text-accent" strokeWidth={2.25} />
           StudyBridge
         </Link>
       </div>
