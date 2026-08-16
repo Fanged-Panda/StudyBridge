@@ -2,6 +2,8 @@ import { useEffect } from 'react';
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import MainLayout from './layouts/MainLayout';
 import Home from './pages/Home';
+import UniversityPage from './pages/universities/UniversityPage';
+import ScholarshipPage from './pages/scholarships/ScholarshipPage';
 import { LoginPage, ProfilePage } from './features/auth';
 
 // Scrolls to the top whenever the route changes (React Router preserves scroll by default)
@@ -46,8 +48,8 @@ function App() {
         <Route element={<MainLayout />}>
           <Route index element={<Home />} />
           <Route path="profile" element={<RequireAuth><ProfilePage /></RequireAuth>} />
-          <Route path="universities" element={<EmptyPage title="Universities" />} />
-          <Route path="scholarships" element={<EmptyPage title="Scholarships" />} />
+          <Route path="universities" element={<UniversityPage />} />
+          <Route path="scholarships" element={<ScholarshipPage />} />
           <Route path="quiz" element={<EmptyPage title="Quiz" />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>

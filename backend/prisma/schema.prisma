@@ -26,3 +26,36 @@ model Student {
   profileImage     String?         @db.VarChar(255)
   createdAt        DateTime        @default(now())
 }
+
+model University {
+  id                  String    @id @default(cuid())
+  name                String    @unique @db.VarChar(150)
+  country             String    @db.VarChar(100)
+  city                String?   @db.VarChar(100)
+  ranking             Int
+  tuitionAnnualUsd    Int?
+  acceptanceRate      Float?
+  applicationFee      Int?
+  applicationDeadline String?   @db.VarChar(100)
+  ieltsRequirement    Float?
+  greRequirement      Int?
+  websiteUrl          String?   @db.VarChar(255)
+  courses             Json?
+  lastScraped         DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+}
+
+model Scholarship {
+  id           String    @id @default(cuid())
+  name         String    @unique @db.VarChar(150)
+  country      String    @db.VarChar(100)
+  amountUsd    Int?
+  fundingLevel String    @db.VarChar(50)
+  eligibility  String?
+  deadline     String?   @db.VarChar(100)
+  websiteUrl   String?   @db.VarChar(255)
+  lastScraped  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
