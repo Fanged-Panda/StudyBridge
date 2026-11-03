@@ -6,7 +6,7 @@ const items = [
   { to: '/universities', label: 'University', icon: 'school' },
   { to: '/profile', label: 'Profile', icon: 'person' },
   { to: '/scholarships', label: 'Scholarship', icon: 'payments' },
-  { to: '/exam', label: 'Exam', icon: 'edit_note' },
+  { to: '/vocabulary', label: 'Vocabulary', icon: 'menu_book' },
   { to: '/chatbot', label: 'Chatbot', icon: 'smart_toy' },
 ];
 

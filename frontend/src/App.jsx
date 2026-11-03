@@ -5,16 +5,16 @@ import MainLayout from './layouts/MainLayout';
 import Home from './pages/Home';
 import UniversityPage from './pages/universities/UniversityPage';
 import ScholarshipPage from './pages/scholarships/ScholarshipPage';
-import QuizPage from './pages/tests/QuizPage';
+import VocabularyPage from './pages/vocabulary/VocabularyPage';
 import { LoginPage, ProfilePage } from './features/auth';
 import { ChatbotPage } from './features/ai';
 
 import AdminDashboard from './pages/admin/AdminDashboard';
 
-const NAV_ORDER = ['/', '/universities', '/profile', '/scholarships', '/quiz', '/chatbot', '/admin'];
+const NAV_ORDER = ['/', '/universities', '/profile', '/scholarships', '/vocabulary', '/chatbot', '/admin'];
 
 const getNavIndex = (pathname) => {
-  const normalized = pathname.startsWith('/quiz') ? '/exam' : pathname;
+  const normalized = pathname.startsWith('/exam') || pathname.startsWith('/quiz') ? '/vocabulary' : pathname;
   const index = NAV_ORDER.findIndex((path) => {
     if (path === '/') return normalized === '/';
     return normalized.startsWith(path);
@@ -148,8 +148,9 @@ const ViewTransitionRoutes = () => {
         <Route path="profile" element={<RequireAuth><ProfileOrAdminGuard /></RequireAuth>} />
         <Route path="universities" element={<UniversityPage />} />
         <Route path="scholarships" element={<ScholarshipPage />} />
-        <Route path="exam" element={<RequireAuth><QuizPage /></RequireAuth>} />
-        <Route path="quiz" element={<Navigate to="/exam" replace />} />
+        <Route path="vocabulary" element={<RequireAuth><VocabularyPage /></RequireAuth>} />
+        <Route path="exam" element={<Navigate to="/vocabulary" replace />} />
+        <Route path="quiz" element={<Navigate to="/vocabulary" replace />} />
         <Route path="chatbot" element={<RequireAuth><ChatbotPage /></RequireAuth>} />
         <Route path="admin" element={<RequireAdmin><AdminDashboard /></RequireAdmin>} />
         <Route path="*" element={<Navigate to="/" replace />} />

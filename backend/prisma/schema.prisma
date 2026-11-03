@@ -3,46 +3,47 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
 }
 
-
 model Student {
-  id                  String               @id @default(cuid())
-  name                String               @db.VarChar(100)
-  email               String               @unique @db.VarChar(255)
-  password            String?              @db.VarChar(255)
-  googleId            String?              @unique
-  phone               String?              @db.VarChar(20)
-  country             String               @db.VarChar(100)
-  institution         String?              @db.VarChar(150)
-  subject             String?              @db.VarChar(100)
-  cgpa                Float?
-  preferredSubject    String?              @db.VarChar(100)
-  satScore            Int?
-  ieltsScore          Float?
-  greScore            Int?
-  toeflScore          Int?
-  duolingoScore       Int?
-  targetDegree        String?              @db.VarChar(100)
-  targetIntake        String?              @db.VarChar(50)
-  targetCountry       String?              @db.VarChar(150)
-  fundingPreference   String?              @db.VarChar(100)
-  graduationYear      Int?
-  researchInterests   String?              @db.VarChar(255)
-  publicationsCount   Int?                 @default(0)
-  workExperienceYears Float?
-  linkedinUrl         String?              @db.VarChar(255)
-  githubUrl           String?              @db.VarChar(255)
-  researchGateUrl     String?              @db.VarChar(255)
-  statementOfPurpose  String?              @db.Text
-  profileImage        String?              @db.VarChar(255)
-  role                String               @default("student") @db.VarChar(20)
-  createdAt           DateTime             @default(now())
+  id                   String                  @id @default(cuid())
+  name                 String                  @db.VarChar(100)
+  email                String                  @unique @db.VarChar(255)
+  password             String?                 @db.VarChar(255)
+  googleId             String?                 @unique
+  phone                String?                 @db.VarChar(20)
+  country              String                  @db.VarChar(100)
+  institution          String?                 @db.VarChar(150)
+  subject              String?                 @db.VarChar(100)
+  cgpa                 Float?
+  preferredSubject     String?                 @db.VarChar(100)
+  satScore             Int?
+  ieltsScore           Float?
+  greScore             Int?
+  toeflScore           Int?
+  duolingoScore        Int?
+  targetDegree         String?                 @db.VarChar(100)
+  targetIntake         String?                 @db.VarChar(50)
+  targetCountry        String?                 @db.VarChar(150)
+  fundingPreference    String?                 @db.VarChar(100)
+  graduationYear       Int?
+  researchInterests    String?                 @db.VarChar(255)
+  publicationsCount    Int?                    @default(0)
+  workExperienceYears  Float?
+  linkedinUrl          String?                 @db.VarChar(255)
+  githubUrl            String?                 @db.VarChar(255)
+  researchGateUrl      String?                 @db.VarChar(255)
+  statementOfPurpose   String?                 @db.Text
+  profileImage         String?                 @db.VarChar(255)
+  role                 String                  @default("student") @db.VarChar(20)
+  createdAt            DateTime                @default(now())
   followedUniversities FollowedUniversity[]
-  notifications       Notification[]
+  notifications        Notification[]
+  learnedWords         LearnedWord[]
+  vocabularyTests      VocabularyTestAttempt[]
 }
 
 model University {
@@ -91,6 +92,36 @@ model FollowedUniversity {
   @@unique([userId, universityId])
   @@index([userId])
   @@index([universityId])
+}
+
+model LearnedWord {
+  id           String   @id @default(cuid())
+  userId       String
+  word         String   @db.VarChar(80)
+  phonetic     String?  @db.VarChar(80)
+  partOfSpeech String?  @db.VarChar(40)
+  definition   String   @db.Text
+  example      String?  @db.Text
+  synonyms     Json?
+  knewIt       Boolean  @default(false)
+  learnedOnKey String   @db.VarChar(10)
+  createdAt    DateTime @default(now())
+  student      Student  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, word])
+  @@index([userId, learnedOnKey])
+  @@index([userId, createdAt])
+}
+
+model VocabularyTestAttempt {
+  id        String   @id @default(cuid())
+  userId    String
+  total     Int
+  correct   Int
+  createdAt DateTime @default(now())
+  student   Student  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
 }
 
 model Notification {

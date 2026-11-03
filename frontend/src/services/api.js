@@ -14,11 +14,12 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-export const quizApi = {
-  generate: async (payload) => (await api.post('/quiz/generate', payload)).data,
-  getOne: async (quizId) => (await api.get(`/quiz/${encodeURIComponent(quizId)}`)).data,
-  submit: async (quizId, payload) => (await api.post(`/quiz/${encodeURIComponent(quizId)}/submit`, payload)).data,
-  performance: async (params = {}) => (await api.get('/quiz/performance', { params })).data,
+export const vocabularyApi = {
+  dashboard: async () => (await api.get('/vocabulary')).data.data,
+  words: async () => (await api.get('/vocabulary/words')).data.data,
+  learn: async (payload) => (await api.post('/vocabulary/learn', payload)).data.data,
+  startTest: async () => (await api.post('/vocabulary/test/start')).data.data,
+  submitTest: async (payload) => (await api.post('/vocabulary/test/submit', payload)).data.data,
 };
 
 export default api;

@@ -160,7 +160,7 @@ const TopNav = () => {
           { to: '/universities', label: 'University' },
           { to: '/admin', label: 'Admin', isAdminPill: true },
           { to: '/scholarships', label: 'Scholarship' },
-          { to: '/exam', label: 'Exam' },
+          { to: '/vocabulary', label: 'Vocabulary' },
           { to: '/chatbot', label: 'Chatbot' },
         ]
       : [
@@ -168,7 +168,7 @@ const TopNav = () => {
           { to: '/universities', label: 'University' },
           ...(isLoggedIn ? [{ to: '/profile', label: 'Profile' }] : []),
           { to: '/scholarships', label: 'Scholarship' },
-          { to: '/exam', label: 'Exam' },
+          { to: '/vocabulary', label: 'Vocabulary' },
           { to: '/chatbot', label: 'Chatbot' },
         ];
 
