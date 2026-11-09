@@ -6,15 +6,22 @@ import Home from './pages/Home';
 import UniversityPage from './pages/universities/UniversityPage';
 import ScholarshipPage from './pages/scholarships/ScholarshipPage';
 import VocabularyPage from './pages/vocabulary/VocabularyPage';
+import ProfessorPage from './pages/professors/ProfessorPage';
+import CommunityPage from './pages/community/CommunityPage';
+import JourneyDetailPage from './pages/community/JourneyDetailPage';
+import SubmitJourneyPage from './pages/community/SubmitJourneyPage';
+import ManageJourneyPage from './pages/community/ManageJourneyPage';
 import { LoginPage, ProfilePage } from './features/auth';
 import { ChatbotPage } from './features/ai';
 
 import AdminDashboard from './pages/admin/AdminDashboard';
 
-const NAV_ORDER = ['/', '/universities', '/profile', '/scholarships', '/vocabulary', '/chatbot', '/admin'];
+const NAV_ORDER = ['/', '/universities', '/professors', '/profile', '/scholarships', '/wordlab', '/community', '/chatbot', '/admin'];
 
 const getNavIndex = (pathname) => {
-  const normalized = pathname.startsWith('/exam') || pathname.startsWith('/quiz') ? '/vocabulary' : pathname;
+  const legacyWordLab =
+    pathname.startsWith('/exam') || pathname.startsWith('/quiz') || pathname.startsWith('/vocabulary');
+  const normalized = legacyWordLab ? '/wordlab' : pathname;
   const index = NAV_ORDER.findIndex((path) => {
     if (path === '/') return normalized === '/';
     return normalized.startsWith(path);
@@ -148,9 +155,15 @@ const ViewTransitionRoutes = () => {
         <Route path="profile" element={<RequireAuth><ProfileOrAdminGuard /></RequireAuth>} />
         <Route path="universities" element={<UniversityPage />} />
         <Route path="scholarships" element={<ScholarshipPage />} />
-        <Route path="vocabulary" element={<RequireAuth><VocabularyPage /></RequireAuth>} />
-        <Route path="exam" element={<Navigate to="/vocabulary" replace />} />
-        <Route path="quiz" element={<Navigate to="/vocabulary" replace />} />
+        <Route path="professors" element={<ProfessorPage />} />
+        <Route path="wordlab" element={<RequireAuth><VocabularyPage /></RequireAuth>} />
+        <Route path="vocabulary" element={<Navigate to="/wordlab" replace />} />
+        <Route path="community" element={<CommunityPage />} />
+        <Route path="community/share" element={<RequireAuth><SubmitJourneyPage /></RequireAuth>} />
+        <Route path="community/manage/:token" element={<ManageJourneyPage />} />
+        <Route path="community/:slug" element={<JourneyDetailPage />} />
+        <Route path="exam" element={<Navigate to="/wordlab" replace />} />
+        <Route path="quiz" element={<Navigate to="/wordlab" replace />} />
         <Route path="chatbot" element={<RequireAuth><ChatbotPage /></RequireAuth>} />
         <Route path="admin" element={<RequireAdmin><AdminDashboard /></RequireAdmin>} />
         <Route path="*" element={<Navigate to="/" replace />} />

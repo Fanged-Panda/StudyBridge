@@ -1,8 +1,13 @@
+import { CORE_1K } from './core1k.js';
+
 /**
- * Curated English vocabulary bank used for the one-word-a-day flow.
- * Definitions are written to be short enough for flashcard and quiz options.
+ * Two banks feed WordLab:
+ *  - CORE_1K: the 1,000 most used English words, fetched by
+ *    scripts/build-core-1k.mjs.
+ *  - CURATED: hand-written academic words with examples and synonyms, added on
+ *    top so advanced learners still meet exam-level vocabulary.
  */
-export const WORDS = [
+export const CURATED = [
   { word: 'abate', phonetic: '/əˈbeɪt/', partOfSpeech: 'verb', definition: 'To become less intense or widespread; to die down.', example: 'The storm finally began to abate towards the evening.', synonyms: ['subside', 'lessen', 'diminish'] },
   { word: 'aberration', phonetic: '/ˌæbəˈreɪʃn/', partOfSpeech: 'noun', definition: 'A departure from what is normal, usual, or expected.', example: 'The warm winter was an aberration for the region.', synonyms: ['deviation', 'anomaly', 'oddity'] },
   { word: 'accolade', phonetic: '/ˈækəleɪd/', partOfSpeech: 'noun', definition: 'An expression of praise or an award for an achievement.', example: 'Her research received accolades from the entire faculty.', synonyms: ['honour', 'tribute', 'award'] },
@@ -86,5 +91,11 @@ export const WORDS = [
   { word: 'wary', phonetic: '/ˈweəri/', partOfSpeech: 'adjective', definition: 'Cautious and alert to possible danger or problems.', example: 'Be wary of offers that seem too good to be true.', synonyms: ['cautious', 'careful', 'guarded'] },
   { word: 'zealous', phonetic: '/ˈzeləs/', partOfSpeech: 'adjective', definition: 'Showing great energy and enthusiasm for a cause.', example: 'The volunteers were zealous about the literacy drive.', synonyms: ['passionate', 'fervent', 'ardent'] },
 ];
+
+const coreWords = new Set(CORE_1K.map((entry) => entry.word.toLowerCase()));
+
+// The 1K list comes first so new words are drawn from everyday English; the
+// curated academic words fill in the gaps.
+export const WORDS = [...CORE_1K, ...CURATED.filter((entry) => !coreWords.has(entry.word.toLowerCase()))];
 
 export const WORD_INDEX = new Map(WORDS.map((entry) => [entry.word.toLowerCase(), entry]));

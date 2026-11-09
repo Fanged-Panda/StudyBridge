@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Bot, User, Send, RotateCcw, Sparkles, Loader2, Compass } from 'lucide-react';
+import { Bot, User, Send, RotateCcw, MessageSquareText, Loader2, Compass } from 'lucide-react';
 import Button from '../../components/ui/Button';
 import Card from '../../components/ui/Card';
 import Input from '../../components/ui/Input';
@@ -120,7 +120,7 @@ const ChatWidget = () => {
       <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/70 px-4 py-2.5 sm:px-5 sm:py-3">
         <div className="flex items-center gap-2.5">
           <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand/10 text-brand sm:h-8 sm:w-8">
-            <Sparkles className="h-4 w-4" />
+            <MessageSquareText className="h-4 w-4" />
           </div>
           <div>
             <h3 className="text-xs font-bold text-slate-800 sm:text-sm">Counseling Session</h3>

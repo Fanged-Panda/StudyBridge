@@ -10,7 +10,7 @@ import {
   Calendar,
   Globe,
   GraduationCap,
-  Sparkles,
+  BadgeCheck,
   Building2,
   FileText,
   DollarSign,

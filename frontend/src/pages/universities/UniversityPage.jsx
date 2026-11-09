@@ -1,26 +1,14 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import api from '../../services/api';
 import UniversityFilterBar from '../../features/universities/UniversityFilterBar';
 import UniCard from '../../features/universities/UniCard';
 import UniversityDetailModal from '../../features/universities/UniversityDetailModal';
-import { Search, RotateCcw, Sparkles, X, Globe2, Building2, ShieldAlert, Edit3, CheckCircle2, AlertCircle, Bell } from 'lucide-react';
+import { Search, RotateCcw, X, Globe2, Building2, ShieldAlert, Edit3, CheckCircle2, AlertCircle, Bell, GraduationCap } from 'lucide-react';
 import Button from '../../components/ui/Button';
 import Card from '../../components/ui/Card';
 import { initialUniversities } from '../../data/initialData';
-
-const estimateMatch = (ranking, acceptanceRate) => {
-  if (typeof acceptanceRate === 'number') {
-    return Math.max(45, Math.min(98, Math.round(100 - acceptanceRate * 0.7)));
-  }
-
-  if (typeof ranking === 'number') {
-    return Math.max(45, Math.min(98, Math.round(100 - ranking / 2.5)));
-  }
-
-  return 82;
-};
 
 const UniversityPage = () => {
   const navigate = useNavigate();
@@ -389,6 +377,25 @@ const UniversityPage = () => {
 
       {/* Top Banner with Search Bar */}
       <div className="rounded-3xl border border-slate-200 bg-white p-6 md:p-8 shadow-sm">
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+          <div className="inline-flex rounded-full bg-slate-100 p-1">
+            <span className="rounded-full bg-white px-4 py-1.5 text-xs font-bold text-primary shadow-sm">Universities</span>
+            <Link
+              to="/professors"
+              className="inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-xs font-bold text-slate-600 transition hover:text-primary"
+            >
+              <GraduationCap size={13} /> Professors
+            </Link>
+          </div>
+
+          <Link
+            to="/professors"
+            className="text-xs font-semibold text-brand hover:underline"
+          >
+            Looking for a supervisor? Browse the faculty directory →
+          </Link>
+        </div>
+
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2">
@@ -396,7 +403,7 @@ const UniversityPage = () => {
                 StudyBridge
               </span>
               <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700 border border-emerald-200">
-                <Sparkles className="h-3 w-3" /> Global Directory
+                <Globe2 className="h-3 w-3" /> Global Directory
               </span>
             </div>
             <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-primary md:text-4xl">
@@ -503,8 +510,6 @@ const UniversityPage = () => {
             <UniCard
               key={university.id || university.name}
               university={university}
-              isFollowing={Boolean(university.id && followedUniIds.has(university.id))}
-              match={estimateMatch(university.ranking, university.acceptanceRate)}
               onSelect={handleOpenDetails}
               onEditClick={(uni) => {
                 setEditingUni({
@@ -527,7 +532,6 @@ const UniversityPage = () => {
       {activeModalUni && (
         <UniversityDetailModal
           university={activeModalUni}
-          isFollowing={Boolean(activeModalUni.id && followedUniIds.has(activeModalUni.id))}
           onClose={() => setActiveModalUni(null)}
           onEditClick={(uni) => {
             setActiveModalUni(null);

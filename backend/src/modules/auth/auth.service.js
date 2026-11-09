@@ -9,7 +9,7 @@ const googleClient = new OAuth2Client(
   'postmessage',
 );
 
-const signToken = (student) =>
+export const signToken = (student) =>
   jwt.sign(
     { id: student.id, email: student.email, name: student.name, role: student.role || 'student' },
     process.env.JWT_SECRET,
@@ -17,7 +17,7 @@ const signToken = (student) =>
   );
 
 // Strip sensitive fields before returning user data to the client
-const publicUser = (student) => {
+export const publicUser = (student) => {
   const { password, googleId, ...rest } = student;
   return rest;
 };

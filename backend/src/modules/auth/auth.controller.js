@@ -1,4 +1,5 @@
 import * as authService from './auth.service.js';
+import * as passwordResetService from './passwordReset.service.js';
 
 export const googleLogin = async (req, res) => {
   const result = await authService.googleLogin(req.body);
@@ -27,5 +28,28 @@ export const completeProfile = async (req, res) => {
 
 export const getStudentCount = async (req, res) => {
   const result = await authService.getStudentCount();
+  return res.status(result.status).json(result.body);
+};
+export const requestPasswordReset = async (req, res) => {
+  const result = await passwordResetService.requestPasswordReset({
+    email: req.body?.email,
+    ip: req.ip,
+  });
+  return res.status(result.status).json(result.body);
+};
+
+export const verifyPasswordResetCode = async (req, res) => {
+  const result = await passwordResetService.verifyPasswordResetCode({
+    email: req.body?.email,
+    code: req.body?.otp ?? req.body?.code,
+  });
+  return res.status(result.status).json(result.body);
+};
+
+export const resetPassword = async (req, res) => {
+  const result = await passwordResetService.resetPassword({
+    resetToken: req.body?.resetToken,
+    password: req.body?.password,
+  });
   return res.status(result.status).json(result.body);
 };

@@ -39,11 +39,14 @@ model Student {
   statementOfPurpose   String?                 @db.Text
   profileImage         String?                 @db.VarChar(255)
   role                 String                  @default("student") @db.VarChar(20)
+  dailyGoal            Int                     @default(3) // new words the student wants to learn per day
   createdAt            DateTime                @default(now())
   followedUniversities FollowedUniversity[]
   notifications        Notification[]
   learnedWords         LearnedWord[]
   vocabularyTests      VocabularyTestAttempt[]
+  journeys             Journey[]
+  journeyVotes         JourneyVote[]
 }
 
 model University {
@@ -65,6 +68,28 @@ model University {
   updatedAt           DateTime             @updatedAt
   followers           FollowedUniversity[]
   notifications       Notification[]
+  professors          Professor[]
+}
+
+// Faculty directory: who teaches what, at which university.
+model Professor {
+  id           String     @id @default(cuid())
+  name         String     @db.VarChar(120)
+  title        String     @db.VarChar(80)
+  department   String?    @db.VarChar(120)
+  field        String     @db.VarChar(140)
+  bio          String?    @db.Text
+  email        String?    @db.VarChar(180)
+  profileUrl   String?    @db.VarChar(300)
+  photoUrl     String?    @db.VarChar(300)
+  universityId String
+  university   University @relation(fields: [universityId], references: [id], onDelete: Cascade)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@unique([name, universityId])
+  @@index([universityId])
+  @@index([field])
 }
 
 model Scholarship {
@@ -141,4 +166,122 @@ model Notification {
   @@index([userId, isRead])
   @@index([userId, createdAt])
   @@index([universityId])
+}
+
+// Community: member-written journeys, moderated before they go public.
+// Author emails live here and are never returned by public endpoints.
+model Journey {
+  id             String            @id @default(cuid())
+  slug           String            @unique @db.VarChar(160)
+  title          String            @db.VarChar(140)
+  excerpt        String            @db.VarChar(320)
+  story          String            @db.Text
+  authorName     String            @db.VarChar(100)
+  authorEmail    String            @db.VarChar(255)
+  photoData      String?           @db.Text
+  tags           String[]
+  allowContact   Boolean           @default(true)
+  authorId       String?
+  status         String            @default("pending") @db.VarChar(20)
+  moderationNote String?           @db.VarChar(300)
+  views          Int               @default(0)
+  approvedAt     DateTime?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  reports        JourneyReport[]
+  contacts       JourneyContact[]
+  editLinks      JourneyEditLink[]
+  comments       JourneyComment[]
+  votes          JourneyVote[]
+  author         Student?          @relation(fields: [authorId], references: [id], onDelete: SetNull)
+
+  @@index([status, approvedAt])
+  @@index([status, createdAt])
+  @@index([authorEmail])
+  @@index([authorId])
+}
+
+// One vote per member per post: value is 1 (up) or -1 (down).
+model JourneyVote {
+  id        String   @id @default(cuid())
+  journeyId String
+  userId    String
+  value     Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  journey   Journey  @relation(fields: [journeyId], references: [id], onDelete: Cascade)
+  student   Student  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([journeyId, userId])
+  @@index([journeyId])
+  @@index([userId])
+}
+
+model JourneyReport {
+  id            String   @id @default(cuid())
+  journeyId     String
+  reason        String   @db.VarChar(60)
+  details       String?  @db.VarChar(1000)
+  reporterEmail String?  @db.VarChar(255)
+  status        String   @default("open") @db.VarChar(20)
+  createdAt     DateTime @default(now())
+  journey       Journey  @relation(fields: [journeyId], references: [id], onDelete: Cascade)
+
+  @@index([journeyId])
+  @@index([status, createdAt])
+}
+
+model JourneyContact {
+  id          String   @id @default(cuid())
+  journeyId   String
+  senderName  String   @db.VarChar(100)
+  senderEmail String   @db.VarChar(255)
+  message     String   @db.Text
+  delivered   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  journey     Journey  @relation(fields: [journeyId], references: [id], onDelete: Cascade)
+
+  @@index([journeyId, createdAt])
+}
+
+// Reader comments on a published journey. One level of replies, like a forum.
+model JourneyComment {
+  id         String           @id @default(cuid())
+  journeyId  String
+  parentId   String?
+  authorName String           @db.VarChar(60)
+  body       String           @db.Text
+  createdAt  DateTime         @default(now())
+  journey    Journey          @relation(fields: [journeyId], references: [id], onDelete: Cascade)
+  parent     JourneyComment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies    JourneyComment[] @relation("CommentReplies")
+
+  @@index([journeyId, createdAt])
+  @@index([parentId])
+}
+
+// Only a SHA-256 hash of the magic-link token is stored.
+model JourneyEditLink {
+  id        String   @id @default(cuid())
+  journeyId String
+  tokenHash String   @unique @db.VarChar(64)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  journey   Journey  @relation(fields: [journeyId], references: [id], onDelete: Cascade)
+
+  @@index([journeyId])
+}
+
+// One-time codes for "forgot password". Only a bcrypt hash of the code is
+// stored, so a database leak can not be used to take over an account.
+model PasswordResetCode {
+  id         String    @id @default(cuid())
+  email      String    @db.VarChar(255)
+  codeHash   String    @db.VarChar(255)
+  attempts   Int       @default(0)
+  consumedAt DateTime?
+  expiresAt  DateTime
+  createdAt  DateTime  @default(now())
+
+  @@index([email, createdAt])
 }

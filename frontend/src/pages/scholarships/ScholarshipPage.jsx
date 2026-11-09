@@ -6,7 +6,7 @@ import {
   ScholarshipFilterBar,
   ScholarshipDetailModal,
 } from '../../features/scholarships';
-import { Search, RotateCcw, Sparkles, X, Award } from 'lucide-react';
+import { Search, RotateCcw, BadgeCheck, X, Award } from 'lucide-react';
 import Button from '../../components/ui/Button';
 import { initialScholarships } from '../../data/initialData';
 
@@ -183,7 +183,7 @@ const ScholarshipPage = () => {
                 StudyBridge
               </span>
               <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700 border border-emerald-200">
-                <Sparkles className="h-3 w-3" /> Fully Funded & Partial Grants
+                <BadgeCheck className="h-3 w-3" /> Fully Funded & Partial Grants
               </span>
             </div>
             <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-primary md:text-4xl">

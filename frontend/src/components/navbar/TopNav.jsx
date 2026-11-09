@@ -160,7 +160,9 @@ const TopNav = () => {
           { to: '/universities', label: 'University' },
           { to: '/admin', label: 'Admin', isAdminPill: true },
           { to: '/scholarships', label: 'Scholarship' },
-          { to: '/vocabulary', label: 'Vocabulary' },
+          { to: '/professors', label: 'Professors' },
+          { to: '/wordlab', label: 'WordLab' },
+          { to: '/community', label: 'Community' },
           { to: '/chatbot', label: 'Chatbot' },
         ]
       : [
@@ -168,7 +170,9 @@ const TopNav = () => {
           { to: '/universities', label: 'University' },
           ...(isLoggedIn ? [{ to: '/profile', label: 'Profile' }] : []),
           { to: '/scholarships', label: 'Scholarship' },
-          { to: '/vocabulary', label: 'Vocabulary' },
+          ...(isLoggedIn ? [{ to: '/professors', label: 'Professors', wideOnly: true }] : []),
+          { to: '/wordlab', label: 'WordLab' },
+          { to: '/community', label: 'Community' },
           { to: '/chatbot', label: 'Chatbot' },
         ];
 
@@ -187,7 +191,7 @@ const TopNav = () => {
         </div>
 
         {/* Desktop Nav */}
-        <nav className="hidden flex-1 items-center justify-center gap-7 md:flex">
+        <nav className="hidden flex-1 items-center justify-center gap-3 md:flex lg:gap-6">
           {navItems.map((item) => {
             const active = isActive(item.to);
             if (item.isAdminPill) {
@@ -210,7 +214,7 @@ const TopNav = () => {
               <Link
                 key={item.to}
                 to={item.to}
-                className={`text-sm font-medium transition-colors ${
+                className={`text-sm font-medium transition-colors ${item.wideOnly ? 'hidden lg:inline-block' : ''} ${
                   active
                     ? 'font-semibold text-primary'
                     : 'text-text-muted hover:text-primary'

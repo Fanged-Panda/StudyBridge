@@ -3,13 +3,13 @@ import { Link } from 'react-router-dom';
 const team = [
   {
     name: 'MD. Sajjad Hossain',
-    role: 'Homepage & Student Login',
+    role: 'Homepage, Login & Profile',
     avatar: 'https://api.dicebear.com/9.x/notionists/svg?seed=Sajjad&backgroundColor=b6e3f4',
     github: 'https://github.com/Fanged-Panda',
   },
   {
     name: 'A M Fardin Hasan',
-    role: 'University & Scholarship',
+    role: 'University, Scholarship & Professors ',
     avatar: 'https://api.dicebear.com/10.x/notionists/svg?backgroundColor=c0aede&seed=Fardin',
     github: 'https://github.com/AM-FArdin',
   },
@@ -21,7 +21,7 @@ const team = [
   },
   {
     name: 'Hasan Mahmud',
-    role: 'Quiz & Evaluation',
+    role: 'Wordlab & Community',
     avatar: 'https://api.dicebear.com/9.x/notionists/svg?seed=Hasan&backgroundColor=d1f4d1',
     github: 'https://github.com/Hasan-mahmud-22',
   },

@@ -5,7 +5,7 @@ import {
   CheckCheck,
   Building2,
   Calendar,
-  Sparkles,
+  Bot,
   AlertCircle,
   ExternalLink,
   ChevronRight,
@@ -33,7 +33,7 @@ const getNotificationIcon = (type) => {
     case 'APPLICATION_DEADLINE':
       return <Calendar className="h-4 w-4 text-amber-600" />;
     case 'RESULT_UPDATE':
-      return <Sparkles className="h-4 w-4 text-emerald-600" />;
+      return <Bot className="h-4 w-4 text-emerald-600" />;
     case 'REQUIREMENT_UPDATE':
       return <AlertCircle className="h-4 w-4 text-blue-600" />;
     case 'GENERAL_UNIVERSITY_UPDATE':

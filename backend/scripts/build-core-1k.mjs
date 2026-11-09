@@ -1,0 +1,178 @@
+/**
+ * Build the "English 1K" word bank used by WordLab.
+ *
+ * Source words: google-10000-english (frequency ordered), taking the first 1000
+ * alphabetic entries. Definitions, phonetics and examples come from the free
+ * Dictionary API (dictionaryapi.dev).
+ *
+ * Usage:  node scripts/build-core-1k.mjs
+ * Output: src/modules/vocabulary/core1k.js   (do not edit by hand)
+ */
+import { readFile, writeFile } from 'node:fs/promises';
+
+const CACHE_PATH = '/tmp/studybridge-core1k-cache.json';
+
+const LIST_URL =
+  'https://raw.githubusercontent.com/first20hours/google-10000-english/master/google-10000-english-no-swears.txt';
+const DICTIONARY_URL = 'https://api.dictionaryapi.dev/api/v2/entries/en';
+const TARGET = 1000;
+const CONCURRENCY = 6;
+
+async function fetchText(url) {
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      const response = await fetch(url);
+      if (response.ok) return await response.text();
+      if (response.status === 404) return null;
+    } catch {
+      // retry
+    }
+    await new Promise((resolve) => setTimeout(resolve, 400 * (attempt + 1)));
+  }
+  return null;
+}
+
+function firstSentence(text) {
+  const value = String(text || '').trim();
+  if (!value) return null;
+  const sentence = value.split(/(?<=[.!?])\s+/)[0];
+  return sentence.length > 160 ? `${sentence.slice(0, 157).trim()}…` : sentence;
+}
+
+function pickEntry(word, payload) {
+  if (!Array.isArray(payload) || !payload.length) return null;
+
+  const phonetic =
+    payload.find((entry) => entry.phonetic)?.phonetic ||
+    payload.flatMap((entry) => entry.phonetics || []).find((item) => item.text)?.text ||
+    null;
+
+  const meanings = payload.flatMap((entry) => entry.meanings || []);
+  const meaning = meanings.find((entry) => (entry.definitions || []).some((def) => def.definition)) || null;
+  if (!meaning) return null;
+
+  const definition = meaning.definitions.find((item) => item.definition)?.definition?.trim();
+  if (!definition) return null;
+
+  const example =
+    meanings
+      .flatMap((entry) => entry.definitions || [])
+      .map((item) => firstSentence(item.example))
+      .find(Boolean) || null;
+
+  const synonyms = [
+    ...new Set(
+      meanings
+        .flatMap((entry) => entry.definitions || [])
+        .flatMap((item) => item.synonyms || [])
+        .map((item) => String(item).toLowerCase().trim())
+        .filter((item) => item && item !== word && item.length < 20 && /^[a-z' -]+$/.test(item)),
+    ),
+  ].slice(0, 3);
+
+  return {
+    word: String(payload[0].word || word).toLowerCase(),
+    phonetic,
+    partOfSpeech: meaning.partOfSpeech || null,
+    definition: definition.length > 220 ? `${definition.slice(0, 217).trim()}…` : definition,
+    example,
+    synonyms,
+  };
+}
+
+async function mapLimited(items, limit, worker) {
+  const results = new Array(items.length);
+  let cursor = 0;
+  const runners = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (cursor < items.length) {
+      const index = cursor;
+      cursor += 1;
+      results[index] = await worker(items[index], index);
+    }
+  });
+  await Promise.all(runners);
+  return results;
+}
+
+const list = (await fetchText(LIST_URL)) || '';
+const words = list
+  .split('\n')
+  .map((line) => line.trim().toLowerCase())
+  .filter((word) => /^[a-z]{3,}$/.test(word))
+  .slice(0, TARGET);
+
+if (words.length < TARGET) {
+  throw new Error(`Expected ${TARGET} words, received ${words.length}.`);
+}
+
+let cache = {};
+try {
+  cache = JSON.parse(await readFile(CACHE_PATH, 'utf8'));
+} catch {
+  cache = {};
+}
+
+console.log(`Fetching definitions for ${words.length} words (${Object.keys(cache).length} cached)…`);
+let done = 0;
+let fetched = 0;
+
+const persist = async () => {
+  await writeFile(CACHE_PATH, JSON.stringify(cache), 'utf8').catch(() => {});
+};
+
+const entries = (
+  await mapLimited(words, CONCURRENCY, async (word) => {
+    if (word in cache) {
+      done += 1;
+      return cache[word];
+    }
+
+    const body = await fetchText(`${DICTIONARY_URL}/${encodeURIComponent(word)}`);
+    done += 1;
+    let result = null;
+    if (body) {
+      try {
+        result = pickEntry(word, JSON.parse(body));
+      } catch {
+        result = null;
+      }
+    }
+    cache[word] = result;
+    fetched += 1;
+    if (fetched % 50 === 0) {
+      console.log(`  …${done}/${words.length}`);
+      await persist();
+    }
+    return result;
+  })
+).filter(Boolean);
+
+await persist();
+
+const seen = new Set();
+const unique = entries.filter((entry) => {
+  if (seen.has(entry.word)) return false;
+  seen.add(entry.word);
+  return true;
+});
+
+const line = (entry) =>
+  `  { word: ${JSON.stringify(entry.word)}, phonetic: ${JSON.stringify(entry.phonetic)}, partOfSpeech: ${JSON.stringify(
+    entry.partOfSpeech,
+  )}, definition: ${JSON.stringify(entry.definition)}, example: ${JSON.stringify(
+    entry.example,
+  )}, synonyms: ${JSON.stringify(entry.synonyms)} },`;
+
+const file = `/**
+ * English 1K: the ${unique.length} most frequently used English words with short
+ * definitions. Generated by scripts/build-core-1k.mjs — regenerate instead of
+ * editing by hand.
+ */
+export const CORE_1K = [
+${unique.map(line).join('\n')}
+];
+`;
+
+const outputPath = new URL('../src/modules/vocabulary/core1k.js', import.meta.url);
+await writeFile(outputPath, file, 'utf8');
+console.log(`Wrote ${unique.length} words to ${outputPath.pathname}`);

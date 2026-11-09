@@ -14,15 +14,13 @@ import {
   Globe,
   Award,
   Clock,
-  Sparkles,
   ShieldCheck,
   TrendingUp,
-  UserPlus,
-  UserCheck,
   Loader2,
   Edit3,
 } from 'lucide-react';
-import api from '../../services/api';
+import ProfessorCard from '../professors/ProfessorCard';
+import { professorsApi } from '../../services/api';
 
 const currencyFormatter = new Intl.NumberFormat('en-US', {
   style: 'currency',
@@ -32,18 +30,17 @@ const currencyFormatter = new Intl.NumberFormat('en-US', {
 
 const UniversityDetailModal = ({
   university,
-  isFollowing: propIsFollowing,
   onClose,
   onScholarshipClick,
-  onFollowToggle,
   onEditClick,
 }) => {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('courses'); // 'courses' | 'budget' | 'eligibility' | 'scholarships'
+  const [activeTab, setActiveTab] = useState('courses'); // 'courses' | 'budget' | 'eligibility' | 'scholarships' | 'professors'
   const [courseSearch, setCourseSearch] = useState('');
   const [expandedCourseId, setExpandedCourseId] = useState(null);
-  const [isFollowing, setIsFollowing] = useState(Boolean(propIsFollowing));
-  const [followLoading, setFollowLoading] = useState(false);
+  const [professors, setProfessors] = useState([]);
+  const [professorsLoading, setProfessorsLoading] = useState(false);
+  const [professorsError, setProfessorsError] = useState('');
   const [isAdmin, setIsAdmin] = useState(() => {
     try {
       const u = JSON.parse(localStorage.getItem('userProfile') || '{}');
@@ -66,49 +63,30 @@ const UniversityDetailModal = ({
     return () => window.removeEventListener('authchange', syncAdmin);
   }, []);
 
+  // Faculty are loaded lazily, only when the professors tab is opened.
   useEffect(() => {
-    if (propIsFollowing !== undefined) {
-      setIsFollowing(Boolean(propIsFollowing));
-    }
-  }, [propIsFollowing]);
+    if (activeTab !== 'professors' || !university?.id) return undefined;
+    let cancelled = false;
 
-  const handleToggleFollow = async (e) => {
-    e?.stopPropagation();
-    const token = localStorage.getItem('token');
-    if (!token) {
-      onClose?.();
-      navigate('/login', { state: { from: '/universities' } });
-      return;
-    }
+    setProfessorsLoading(true);
+    setProfessorsError('');
 
-    if (!university?.id) return;
+    professorsApi
+      .forUniversity(university.id)
+      .then((data) => {
+        if (!cancelled) setProfessors(data?.items || []);
+      })
+      .catch(() => {
+        if (!cancelled) setProfessorsError('The faculty list could not be loaded right now.');
+      })
+      .finally(() => {
+        if (!cancelled) setProfessorsLoading(false);
+      });
 
-    const previous = isFollowing;
-    const nextState = !previous;
-    setIsFollowing(nextState);
-    setFollowLoading(true);
-
-    try {
-      if (nextState) {
-        await api.post(`/universities/${university.id}/follow`);
-      } else {
-        await api.delete(`/universities/${university.id}/follow`);
-      }
-
-      onFollowToggle?.(university.id, nextState);
-      window.dispatchEvent(
-        new CustomEvent('followchange', {
-          detail: { universityId: university.id, isFollowing: nextState },
-        })
-      );
-      window.dispatchEvent(new Event('notificationchange'));
-    } catch (err) {
-      console.error('Modal follow toggle error:', err);
-      setIsFollowing(previous);
-    } finally {
-      setFollowLoading(false);
-    }
-  };
+    return () => {
+      cancelled = true;
+    };
+  }, [activeTab, university?.id]);
 
   // Lock background scroll and listen for Escape key
   useEffect(() => {
@@ -201,26 +179,6 @@ const UniversityDetailModal = ({
               <ShieldCheck className="h-3.5 w-3.5" />
               Accredited Official
             </span>
-            <button
-              type="button"
-              onClick={handleToggleFollow}
-              disabled={followLoading}
-              className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1 text-xs font-bold transition shadow-xs ${
-                isFollowing
-                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-400/40 hover:bg-red-500/20 hover:text-red-300 hover:border-red-400/40'
-                  : 'bg-white text-primary hover:bg-teal-50 hover:text-accent border border-white/20'
-              }`}
-              title={isFollowing ? 'Click to unfollow' : 'Follow for admission updates'}
-            >
-              {followLoading ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : isFollowing ? (
-                <UserCheck className="h-3.5 w-3.5" />
-              ) : (
-                <UserPlus className="h-3.5 w-3.5" />
-              )}
-              <span>{followLoading ? 'Updating...' : isFollowing ? 'Following' : 'Follow'}</span>
-            </button>
             {isAdmin && (
               <button
                 type="button"
@@ -283,6 +241,7 @@ const UniversityDetailModal = ({
             { id: 'budget', label: 'Budget & Cost Breakdown', icon: DollarSign },
             { id: 'eligibility', label: 'Eligibility & Requirements', icon: CheckCircle2 },
             { id: 'scholarships', label: 'Scholarships & Aid', count: scholarships?.length, icon: Award },
+            { id: 'professors', label: 'Professors', icon: GraduationCap },
           ].map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -553,6 +512,55 @@ const UniversityDetailModal = ({
             </div>
           )}
 
+          {/* TAB 5: PROFESSORS */}
+          {activeTab === 'professors' && (
+            <div className="space-y-4">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-xs text-slate-600 sm:text-sm">
+                  Academics at {name} and the research fields they work in.
+                </p>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    onClose?.();
+                    navigate(`/professors?search=${encodeURIComponent(name)}`);
+                  }}
+                  className="text-xs"
+                >
+                  Open full faculty directory
+                </Button>
+              </div>
+
+              {professorsLoading ? (
+                <div className="flex items-center justify-center rounded-2xl border border-slate-200 p-10 text-xs text-slate-500 sm:text-sm">
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading professors…
+                </div>
+              ) : professorsError ? (
+                <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-center text-xs font-semibold text-red-700 sm:text-sm">
+                  {professorsError}
+                </div>
+              ) : professors.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-slate-200 p-8 text-center text-xs text-slate-500 sm:text-sm">
+                  No faculty profiles have been added for {name} yet.
+                </div>
+              ) : (
+                <div className="grid gap-3.5 sm:grid-cols-2">
+                  {professors.map((professor) => (
+                    <ProfessorCard
+                      key={professor.id}
+                      professor={professor}
+                      compact
+                      onOpenUniversity={() => {
+                        onClose?.();
+                        navigate(`/professors?search=${encodeURIComponent(professor.name)}`);
+                      }}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* TAB 4: SCHOLARSHIPS */}
           {activeTab === 'scholarships' && (
             <div className="space-y-4">
@@ -630,27 +638,6 @@ const UniversityDetailModal = ({
           </div>
 
           <div className="flex items-center gap-2.5">
-            <button
-              type="button"
-              onClick={handleToggleFollow}
-              disabled={followLoading}
-              className={`inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold transition shadow-xs ${
-                isFollowing
-                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-300 hover:bg-red-50 hover:text-red-600 hover:border-red-200'
-                  : 'bg-accent text-white hover:bg-accent-teal shadow-sm'
-              }`}
-              title={isFollowing ? 'Click to unfollow' : 'Follow for admission updates'}
-            >
-              {followLoading ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : isFollowing ? (
-                <UserCheck className="h-3.5 w-3.5" />
-              ) : (
-                <UserPlus className="h-3.5 w-3.5" />
-              )}
-              <span>{followLoading ? 'Updating...' : isFollowing ? 'Following' : 'Follow University'}</span>
-            </button>
-
             {isAdmin && (
               <Button
                 variant="outline"

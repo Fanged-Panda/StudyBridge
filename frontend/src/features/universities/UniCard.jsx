@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import Button from '../../components/ui/Button';
 import Card from '../../components/ui/Card';
 import Badge from '../../components/ui/Badge';
-import { BookOpen, Check, Bookmark, Sparkles, ArrowRight, UserPlus, UserCheck, Loader2, Edit3 } from 'lucide-react';
+import { BookOpen, Bookmark, BookmarkCheck, ArrowRight, BadgeCheck, Edit3 } from 'lucide-react';
 import { isBookmarked, toggleBookmark } from '../../services/bookmarks';
 import api from '../../services/api';
 
@@ -21,18 +20,13 @@ const UniCard = (props) => {
     city: propCity,
     ranking: propRanking,
     tuition: propTuition,
-    match: propMatch = 85,
-    isFollowing: propIsFollowing,
     onSelect,
     onScholarshipClick,
-    onFollowToggle,
     onEditClick,
   } = props;
 
-  const navigate = useNavigate();
   const [isSaved, setIsSaved] = useState(() => (university?.id ? isBookmarked(university.id) : false));
-  const [isFollowing, setIsFollowing] = useState(Boolean(propIsFollowing));
-  const [followLoading, setFollowLoading] = useState(false);
+  const [savingBookmark, setSavingBookmark] = useState(false);
   const [isAdmin, setIsAdmin] = useState(() => {
     try {
       const u = JSON.parse(localStorage.getItem('userProfile') || '{}');
@@ -63,12 +57,6 @@ const UniCard = (props) => {
     return () => window.removeEventListener('bookmarkschange', check);
   }, [university?.id]);
 
-  useEffect(() => {
-    if (propIsFollowing !== undefined) {
-      setIsFollowing(Boolean(propIsFollowing));
-    }
-  }, [propIsFollowing]);
-
   // Normalize data whether passed as an object or individual props
   const uni = university || {
     name: propName,
@@ -97,48 +85,34 @@ const UniCard = (props) => {
     courses = [],
   } = uni;
 
-  const matchScore = props.match ?? propMatch ?? 85;
-
-  const handleSave = (e) => {
+  // One button, two jobs: it saves the university to the student's profile and,
+  // when signed in, follows it so admission updates arrive as notifications.
+  const handleBookmark = async (e) => {
     e.stopPropagation();
-    toggleBookmark(uni);
-  };
 
-  const handleToggleFollow = async (e) => {
-    e.stopPropagation();
+    const nowSaved = toggleBookmark(uni);
+
     const token = localStorage.getItem('token');
-    if (!token) {
-      navigate('/login', { state: { from: '/universities' } });
-      return;
-    }
+    if (!token || !id) return;
 
-    if (!id) return;
-
-    const previousState = isFollowing;
-    const nextState = !previousState;
-    setIsFollowing(nextState);
-    setFollowLoading(true);
-
+    setSavingBookmark(true);
     try {
-      if (nextState) {
+      if (nowSaved) {
         await api.post(`/universities/${id}/follow`);
       } else {
         await api.delete(`/universities/${id}/follow`);
       }
 
-      onFollowToggle?.(id, nextState);
       window.dispatchEvent(
         new CustomEvent('followchange', {
-          detail: { universityId: id, isFollowing: nextState },
+          detail: { universityId: id, isFollowing: nowSaved },
         })
       );
       window.dispatchEvent(new Event('notificationchange'));
     } catch (err) {
-      console.error('Follow toggle error:', err);
-      // Rollback on error
-      setIsFollowing(previousState);
+      console.error('Could not sync the follow with the server:', err);
     } finally {
-      setFollowLoading(false);
+      setSavingBookmark(false);
     }
   };
 
@@ -170,47 +144,25 @@ const UniCard = (props) => {
             )}
           </div>
 
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={handleToggleFollow}
-              disabled={followLoading}
-              className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold transition shadow-2xs ${
-                isFollowing
-                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-300 hover:bg-red-50 hover:text-red-600 hover:border-red-200'
-                  : 'bg-slate-50 text-slate-700 border border-slate-200 hover:border-accent hover:bg-accent/5 hover:text-accent'
-              }`}
-              title={isFollowing ? 'Click to unfollow' : 'Follow for admission & deadline updates'}
-            >
-              {followLoading ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : isFollowing ? (
-                <UserCheck className="h-3.5 w-3.5" />
-              ) : (
-                <UserPlus className="h-3.5 w-3.5" />
-              )}
-              <span>{followLoading ? 'Updating...' : isFollowing ? 'Following' : 'Follow'}</span>
-            </button>
-
-            <div className="rounded-2xl bg-accent/10 px-3 py-1.5 text-center">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-accent block">
-                Match
-              </span>
-              <span className="text-base font-extrabold text-accent">{matchScore}%</span>
-            </div>
-            <button
-              type="button"
-              onClick={handleSave}
-              className={`rounded-xl p-2 transition ${
-                isSaved
-                  ? 'bg-brand text-white'
-                  : 'bg-slate-100 text-slate-400 hover:bg-slate-200 hover:text-slate-700'
-              }`}
-              title={isSaved ? 'Shortlisted' : 'Save to Shortlist'}
-            >
-              {isSaved ? <Check className="h-4 w-4" /> : <Bookmark className="h-4 w-4" />}
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={handleBookmark}
+            disabled={savingBookmark}
+            aria-pressed={isSaved}
+            className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-bold transition disabled:opacity-60 ${
+              isSaved
+                ? 'border-brand bg-brand text-white hover:bg-primary'
+                : 'border-slate-200 bg-slate-50 text-slate-700 hover:border-accent hover:bg-accent/5 hover:text-accent'
+            }`}
+            title={
+              isSaved
+                ? 'Saved to your profile. Click to remove and stop updates.'
+                : 'Save to your profile and get notifications about admission changes'
+            }
+          >
+            {isSaved ? <BookmarkCheck className="h-3.5 w-3.5" /> : <Bookmark className="h-3.5 w-3.5" />}
+            <span>{isSaved ? 'Saved' : 'Save'}</span>
+          </button>
         </div>
 
         {/* Title */}
@@ -252,7 +204,7 @@ const UniCard = (props) => {
             </span>
           )}
           <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700">
-            <Sparkles className="h-3 w-3" /> Live Verified
+            <BadgeCheck className="h-3 w-3" /> Live Verified
           </span>
         </div>
 

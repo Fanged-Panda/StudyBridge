@@ -6,7 +6,8 @@ const items = [
   { to: '/universities', label: 'University', icon: 'school' },
   { to: '/profile', label: 'Profile', icon: 'person' },
   { to: '/scholarships', label: 'Scholarship', icon: 'payments' },
-  { to: '/vocabulary', label: 'Vocabulary', icon: 'menu_book' },
+  { to: '/wordlab', label: 'WordLab', icon: 'menu_book' },
+  { to: '/community', label: 'Community', icon: 'groups' },
   { to: '/chatbot', label: 'Chatbot', icon: 'smart_toy' },
 ];
 
@@ -34,8 +35,8 @@ const MobileBottomNav = () => {
   const visibleItems = items.filter((item) => isLoggedIn || item.to !== '/profile');
 
   return (
-    <nav className="fixed inset-x-6 bottom-6 z-50 md:hidden" aria-label="Primary">
-      <div className="flex h-16 items-center justify-around rounded-2xl border border-outline/70 bg-white/85 px-2 shadow-2xl backdrop-blur-xl">
+    <nav className="fixed inset-x-3 bottom-4 z-50 sm:inset-x-6 sm:bottom-6 md:hidden" aria-label="Primary">
+      <div className="flex h-16 items-center justify-around rounded-2xl border border-outline/70 bg-white/85 px-1.5 shadow-2xl backdrop-blur-xl">
         {visibleItems.map((item) => {
           const active = isActive(item.to);
           return (
@@ -43,7 +44,7 @@ const MobileBottomNav = () => {
               key={item.to}
               to={item.to}
               aria-current={active ? 'page' : undefined}
-              className={`flex flex-col items-center justify-center transition-colors ${
+              className={`flex min-w-0 flex-1 flex-col items-center justify-center transition-colors ${
                 active ? 'text-accent' : 'text-text-muted hover:text-primary'
               }`}
             >
@@ -57,7 +58,7 @@ const MobileBottomNav = () => {
               >
                 {item.icon}
               </span>
-              <span className={`mt-1 text-[10px] ${active ? 'font-bold' : 'font-medium'}`}>
+              <span className={`mt-1 max-w-full truncate px-0.5 text-[9px] sm:text-[10px] ${active ? 'font-bold' : 'font-medium'}`}>
                 {item.label}
               </span>
             </Link>

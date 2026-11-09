@@ -49,6 +49,15 @@ export async function learn(req, res) {
   }
 }
 
+export async function updateGoal(req, res) {
+  try {
+    const data = await vocabularyService.setDailyGoal(userIdFrom(req), req.body?.dailyGoal);
+    return res.json({ success: true, data });
+  } catch (error) {
+    return respondWithError(error, res);
+  }
+}
+
 export async function startTest(req, res) {
   try {
     const data = await vocabularyService.startTest(userIdFrom(req));

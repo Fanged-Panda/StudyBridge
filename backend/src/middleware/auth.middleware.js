@@ -18,6 +18,20 @@ export const authMiddleware = (req, res, next) => {
   }
 };
 
+// Reads the token when it is present but never rejects the request: used to
+// personalise public pages ("did I already vote?") without requiring a login.
+export const optionalAuth = (req, _res, next) => {
+  const header = req.headers.authorization;
+  if (header?.startsWith('Bearer ')) {
+    try {
+      req.user = jwt.verify(header.split(' ')[1], process.env.JWT_SECRET);
+    } catch {
+      req.user = null;
+    }
+  }
+  return next();
+};
+
 export const requireAdmin = async (req, res, next) => {
   if (!req.user) {
     return res.status(401).json({ success: false, message: 'Unauthorized' });

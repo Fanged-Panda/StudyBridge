@@ -11,7 +11,7 @@ import {
   CheckCircle2,
   AlertCircle,
   Search,
-  Sparkles,
+  Megaphone,
   DollarSign,
   Calendar,
   X,
@@ -22,6 +22,7 @@ import api from '../../services/api';
 import Button from '../../components/ui/Button';
 import Badge from '../../components/ui/Badge';
 import Card from '../../components/ui/Card';
+import AdminJourneyPanel from '../../features/community/AdminJourneyPanel';
 
 const HACKER_AVATAR =
   'https://api.dicebear.com/9.x/bottts/svg?seed=CyberHacker&backgroundColor=041d1a';
@@ -238,7 +239,7 @@ const AdminDashboard = () => {
                 Administrator Portal
               </span>
               <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700 border border-emerald-200">
-                <Sparkles className="h-3 w-3" /> Live Follower Broadcaster
+                <Megaphone className="h-3 w-3" /> Live Follower Broadcaster
               </span>
             </div>
             <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-primary md:text-4xl">
@@ -328,7 +329,7 @@ const AdminDashboard = () => {
       </div>
 
       {/* Tabs Navigation */}
-      <div className="flex border-b border-slate-200 gap-2">
+      <div className="flex gap-2 overflow-x-auto border-b border-slate-200">
         <button
           type="button"
           onClick={() => setActiveTab('universities')}
@@ -369,7 +370,23 @@ const AdminDashboard = () => {
           <span>Scholarships</span>
           <Badge variant="outline">{scholarships.length}</Badge>
         </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('community')}
+          className={`inline-flex shrink-0 items-center gap-2 whitespace-nowrap border-b-2 px-5 py-3 text-sm font-bold transition ${
+            activeTab === 'community'
+              ? 'border-brand text-brand'
+              : 'border-transparent text-slate-500 hover:text-primary'
+          }`}
+        >
+          <Users className="h-4 w-4" />
+          <span>Community Journeys</span>
+        </button>
       </div>
+
+      {/* TAB 4: COMMUNITY MODERATION */}
+      {activeTab === 'community' && <AdminJourneyPanel />}
 
       {/* TAB 1: UNIVERSITIES MANAGER */}
       {activeTab === 'universities' && (

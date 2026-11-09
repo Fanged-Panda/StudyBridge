@@ -726,7 +726,9 @@ const ProfilePage = () => {
                 <span className="material-symbols-outlined mb-2 text-3xl text-on-surface-variant/40">
                   bookmark_border
                 </span>
-                <p className="text-sm text-on-surface-variant">No bookmarked universities yet.</p>
+                <p className="text-sm text-on-surface-variant">
+                  No saved universities yet. Tap “Save” on any university to add it here and follow its updates.
+                </p>
                 <Link
                   to="/universities"
                   className="mt-3 inline-block text-sm font-semibold text-accent hover:underline"
@@ -823,7 +825,7 @@ const ProfilePage = () => {
                 </span>
                 <p className="text-sm font-semibold text-deep-navy">No notifications yet</p>
                 <p className="mt-1 text-xs text-on-surface-variant max-w-xs mx-auto">
-                  Follow universities to receive real-time admission updates, deadline reminders, and scholarship alerts.
+                  Save a university to your pipeline and you will get admission updates, deadline reminders and scholarship alerts here.
                 </p>
                 <Link
                   to="/universities"

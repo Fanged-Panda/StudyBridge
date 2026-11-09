@@ -4,6 +4,7 @@ import { useGoogleLogin } from '@react-oauth/google';
 import api from '../../services/api';
 import SignUpWizard from '../../features/auth/SignUpWizard';
 import ProfileCompletionWizard from '../../features/auth/ProfileCompletionWizard';
+import ForgotPasswordDialog from '../../features/auth/ForgotPasswordDialog';
 
 const LoginPage = () => {
   const [active, setActive] = useState(false); // false = sign-in visible by default
@@ -12,6 +13,7 @@ const LoginPage = () => {
   const [authLoading, setAuthLoading] = useState(false);
   const [authErrors, setAuthErrors] = useState([]);
   const [googleNewUser, setGoogleNewUser] = useState(null); // { token, user, name } when Google signup needs profile completion
+  const [forgotOpen, setForgotOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const from = location.state?.from || '/profile';
@@ -221,6 +223,13 @@ const LoginPage = () => {
               disabled={authLoading}
               className="w-full max-w-[200px] bg-primary text-white font-bold py-2 rounded-full hover:opacity-90 active:scale-95 transition-all uppercase tracking-widest text-xs shadow-lg disabled:opacity-60 disabled:cursor-not-allowed"
             >
+              <button
+                type="button"
+                onClick={() => setForgotOpen(true)}
+                className="mb-5 text-xs font-semibold text-accent underline-offset-2 hover:underline"
+              >
+                Forgot password?
+              </button>
               {authLoading ? 'Signing in…' : 'SIGN IN'}
             </button>
           </form>
@@ -383,6 +392,13 @@ const LoginPage = () => {
                   disabled={authLoading}
                   className="mt-2 w-full py-4 bg-[#031632] text-white rounded-full text-[12px] font-bold tracking-[0.1em] uppercase shadow-lg btn-active relative overflow-hidden disabled:opacity-60 disabled:cursor-not-allowed"
                 >
+                <button
+                  type="button"
+                  onClick={() => setForgotOpen(true)}
+                  className="-mt-1 self-end text-[12px] font-semibold text-accent underline-offset-2 hover:underline"
+                >
+                  Forgot password?
+                </button>
                   {authLoading ? 'Signing in…' : 'Sign In'}
                 </button>
               </form>
@@ -401,7 +417,13 @@ const LoginPage = () => {
         </div>
       </main>
 
-      <style>{`
+      
+      <ForgotPasswordDialog
+        open={forgotOpen}
+        onClose={() => setForgotOpen(false)}
+        onSignedIn={() => navigate(from)}
+        defaultEmail={signInEmail}
+      /><style>{`
         /* ===== DESKTOP STYLES ===== */
         .form-container {
           position: absolute;

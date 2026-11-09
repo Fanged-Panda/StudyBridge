@@ -8,6 +8,7 @@ router.use(authMiddleware);
 router.get('/', controller.dashboard);
 router.get('/words', controller.listWords);
 router.post('/learn', controller.learn);
+router.patch('/goal', controller.updateGoal);
 router.post('/test/start', controller.startTest);
 router.post('/test/submit', controller.submitTest);
 
