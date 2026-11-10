@@ -18,6 +18,7 @@ import {
   TrendingUp,
   Loader2,
   Edit3,
+  Sparkles,
 } from 'lucide-react';
 import ProfessorCard from '../professors/ProfessorCard';
 import { professorsApi } from '../../services/api';
@@ -32,6 +33,7 @@ const UniversityDetailModal = ({
   university,
   onClose,
   onScholarshipClick,
+  onCheckFit,
   onEditClick,
 }) => {
   const navigate = useNavigate();
@@ -658,6 +660,17 @@ const UniversityDetailModal = ({
 
             <Button variant="outline" onClick={onClose} className="text-xs py-2 px-4">
               Close
+            </Button>
+            <Button
+              variant="accent"
+              onClick={() => {
+                onClose?.();
+                onCheckFit?.(university);
+              }}
+              className="text-xs py-2 px-4 inline-flex items-center gap-1.5 font-bold"
+            >
+              <Sparkles className="h-3.5 w-3.5" />
+              Check Fit
             </Button>
             {websiteUrl && (
               <Button

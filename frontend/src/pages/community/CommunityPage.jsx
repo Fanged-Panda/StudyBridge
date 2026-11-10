@@ -14,8 +14,12 @@ import {
 } from 'lucide-react';
 import JourneyCard from '../../features/community/JourneyCard';
 import { communityApi } from '../../services/api';
+import { getCache, setCache } from '../../services/pageCache';
 
 const PAGE_SIZE = 9;
+const TAGS_CACHE_KEY = 'community:tags';
+
+const feedCacheKey = (search, tag, page) => `community:feed:${search}|${tag}|${page}`;
 
 const SkeletonCard = () => (
   <div className="animate-pulse rounded-3xl border border-slate-200 bg-white p-6 shadow-soft">
@@ -38,15 +42,17 @@ const SkeletonCard = () => (
 );
 
 const CommunityPage = () => {
+  const cachedFeed = getCache(feedCacheKey('', '', 1));
+
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
   const [activeTag, setActiveTag] = useState('');
   const [page, setPage] = useState(1);
 
-  const [items, setItems] = useState([]);
-  const [pagination, setPagination] = useState({ page: 1, total: 0, totalPages: 1 });
-  const [tags, setTags] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [items, setItems] = useState(cachedFeed?.items ?? []);
+  const [pagination, setPagination] = useState(cachedFeed?.pagination ?? { page: 1, total: 0, totalPages: 1 });
+  const [tags, setTags] = useState(getCache(TAGS_CACHE_KEY) ?? []);
+  const [loading, setLoading] = useState(!cachedFeed);
   const [error, setError] = useState('');
   const requestId = useRef(0);
 
@@ -59,39 +65,59 @@ const CommunityPage = () => {
     return () => window.clearTimeout(timer);
   }, [searchInput]);
 
-  const loadFeed = useCallback(async () => {
-    const id = requestId.current + 1;
-    requestId.current = id;
-    setLoading(true);
-    setError('');
+  const loadFeed = useCallback(
+    async (force = false) => {
+      const key = feedCacheKey(search, activeTag, page);
+      const cached = force ? null : getCache(key);
 
-    try {
-      const data = await communityApi.journeys({
-        search: search || undefined,
-        tag: activeTag || undefined,
-        page,
-        limit: PAGE_SIZE,
-      });
-      if (requestId.current !== id) return;
-      setItems(data.items || []);
-      setPagination(data.pagination);
-    } catch (err) {
-      if (requestId.current !== id) return;
-      setError(err?.response?.data?.message || 'The community feed could not be loaded. Please try again.');
-    } finally {
-      if (requestId.current === id) setLoading(false);
-    }
-  }, [search, activeTag, page]);
+      if (cached) {
+        setItems(cached.items);
+        setPagination(cached.pagination);
+        setError('');
+        setLoading(false);
+        return;
+      }
+
+      const id = requestId.current + 1;
+      requestId.current = id;
+      setLoading(true);
+      setError('');
+
+      try {
+        const data = await communityApi.journeys({
+          search: search || undefined,
+          tag: activeTag || undefined,
+          page,
+          limit: PAGE_SIZE,
+        });
+        if (requestId.current !== id) return;
+        setItems(data.items || []);
+        setPagination(data.pagination);
+        setCache(key, { items: data.items || [], pagination: data.pagination });
+      } catch (err) {
+        if (requestId.current !== id) return;
+        setError(err?.response?.data?.message || 'The community feed could not be loaded. Please try again.');
+      } finally {
+        if (requestId.current === id) setLoading(false);
+      }
+    },
+    [search, activeTag, page]
+  );
 
   useEffect(() => {
     loadFeed();
   }, [loadFeed]);
 
   useEffect(() => {
+    if (getCache(TAGS_CACHE_KEY)) return undefined;
     communityApi
       .tags()
-      .then(setTags)
+      .then((data) => {
+        setTags(data);
+        setCache(TAGS_CACHE_KEY, data);
+      })
       .catch(() => setTags([]));
+    return undefined;
   }, []);
 
   const filtersActive = Boolean(search || activeTag);
@@ -221,7 +247,7 @@ const CommunityPage = () => {
         </p>
         <button
           type="button"
-          onClick={loadFeed}
+          onClick={() => loadFeed(true)}
           className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3.5 py-1.5 text-xs font-semibold text-text-muted transition hover:border-accent hover:text-primary focus:outline-none focus:ring-2 focus:ring-accent"
         >
           <RefreshCw size={12} /> Refresh
@@ -242,7 +268,7 @@ const CommunityPage = () => {
           <p className="text-sm font-semibold text-red-700">{error}</p>
           <button
             type="button"
-            onClick={loadFeed}
+            onClick={() => loadFeed(true)}
             className="mt-4 inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-opacity-90 focus:outline-none focus:ring-2 focus:ring-accent"
           >
             <RefreshCw size={14} /> Try again

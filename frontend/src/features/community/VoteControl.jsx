@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { ArrowBigDown, ArrowBigUp } from 'lucide-react';
 import { communityApi } from '../../services/api';
+import { clearCache } from '../../services/pageCache';
 
 const sizes = {
   sm: { button: 'h-7 w-7', icon: 15, score: 'text-xs' },
@@ -42,6 +43,10 @@ const VoteControl = ({ slug, score = 0, myVote = 0, size = 'md', layout = 'row',
       const data = await communityApi.vote(slug, value);
       setTotal(Number(data?.score) || 0);
       setVote(Number(data?.myVote) || 0);
+      // Scores (and therefore feed order) changed: refetch next time instead of
+      // showing a stale cached page.
+      clearCache('community:feed:');
+      clearCache(`journey:${slug}`);
     } catch {
       setTotal(previous.total);
       setVote(previous.vote);

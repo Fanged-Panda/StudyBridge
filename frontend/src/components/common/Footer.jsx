@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 const team = [
   {
     name: 'MD. Sajjad Hossain',
-    role: 'Homepage, Login & Profile',
+    role: 'Homepage, Login & Student Profile',
     avatar: 'https://api.dicebear.com/9.x/notionists/svg?seed=Sajjad&backgroundColor=b6e3f4',
     github: 'https://github.com/Fanged-Panda',
   },

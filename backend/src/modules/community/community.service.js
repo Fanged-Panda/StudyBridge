@@ -169,30 +169,55 @@ export async function listPublicJourneys({ search, tag, page, limit, viewerId } 
     ];
   }
 
-  const [rows, total] = await Promise.all([
+  const [idRows, total] = await Promise.all([
     prisma.journey.findMany({
       where,
       orderBy: { approvedAt: 'desc' },
-      skip: paging.skip,
-      take: paging.limit,
-      select: {
-        id: true,
-        slug: true,
-        title: true,
-        excerpt: true,
-        authorName: true,
-        authorId: true,
-        photoData: true,
-        tags: true,
-        allowContact: true,
-        createdAt: true,
-        approvedAt: true,
-        author: { select: { profileImage: true } },
-        _count: { select: { comments: true } },
-      },
+      select: { id: true },
     }),
     prisma.journey.count({ where }),
   ]);
+
+  // Rank by net score (upvotes minus downvotes). Prisma cannot order a page by
+  // the sum of a relation, so score the matching ids first, then fetch only the
+  // requested page in that order. Sorting is stable, so equal scores keep the
+  // newest-approved-first order from above.
+  const scoreRows = idRows.length
+    ? await prisma.journeyVote.groupBy({
+        by: ['journeyId'],
+        where: { journeyId: { in: idRows.map((row) => row.id) } },
+        _sum: { value: true },
+      })
+    : [];
+  const scoreById = new Map(scoreRows.map((row) => [row.journeyId, row._sum.value || 0]));
+  const rankedIds = idRows
+    .map((row) => row.id)
+    .sort((a, b) => (scoreById.get(b) || 0) - (scoreById.get(a) || 0))
+    .slice(paging.skip, paging.skip + paging.limit);
+
+  const rows = rankedIds.length
+    ? await prisma.journey.findMany({
+        where: { id: { in: rankedIds } },
+        select: {
+          id: true,
+          slug: true,
+          title: true,
+          excerpt: true,
+          authorName: true,
+          authorId: true,
+          photoData: true,
+          tags: true,
+          allowContact: true,
+          createdAt: true,
+          approvedAt: true,
+          author: { select: { profileImage: true } },
+          _count: { select: { comments: true } },
+        },
+      })
+    : [];
+
+  const rankById = new Map(rankedIds.map((id, index) => [id, index]));
+  rows.sort((a, b) => rankById.get(a.id) - rankById.get(b.id));
 
   const items = await withSocialCounts(rows, viewerId);
 

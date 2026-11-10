@@ -1,36 +1,56 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { Link, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import api from '../../services/api';
 import UniversityFilterBar from '../../features/universities/UniversityFilterBar';
 import UniCard from '../../features/universities/UniCard';
 import UniversityDetailModal from '../../features/universities/UniversityDetailModal';
-import { Search, RotateCcw, X, Globe2, Building2, ShieldAlert, Edit3, CheckCircle2, AlertCircle, Bell, GraduationCap } from 'lucide-react';
+import { Search, RotateCcw, X, Globe2, Building2, ShieldAlert, Edit3, CheckCircle2, AlertCircle, Bell } from 'lucide-react';
 import Button from '../../components/ui/Button';
 import Card from '../../components/ui/Card';
 import { initialUniversities } from '../../data/initialData';
+import { startFitCheck } from '../../features/ai';
+import { getCache, setCache } from '../../services/pageCache';
+
+const DEFAULT_SUBJECTS = [
+  'All',
+  'AI',
+  'Architecture',
+  'Business',
+  'Computer Science',
+  'Data Science',
+  'Economics',
+  'Engineering',
+  'Law',
+  'Mathematics',
+  'Medicine',
+  'Physics',
+  'Robotics',
+];
+
+const uniListCacheKey = (params = {}) =>
+  ['uni:list', params.limit || 100, params.sort || 'ranking', params.search || '', params.country || '', params.subject || '', params.budget || '', params.maxIelts || ''].join('|');
 
 const UniversityPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
-  // Start with instant initial data so page is never blank
-  const [universities, setUniversities] = useState(initialUniversities);
-  const [availableSubjects, setAvailableSubjects] = useState([
-    'All',
-    'AI',
-    'Architecture',
-    'Business',
-    'Computer Science',
-    'Data Science',
-    'Economics',
-    'Engineering',
-    'Law',
-    'Mathematics',
-    'Medicine',
-    'Physics',
-    'Robotics',
-  ]);
+
+  const initialSearch = searchParams.get('search') || '';
+  const initialCountry = searchParams.get('country') || 'All';
+
+  // Start with the last result for these filters, then the instant seed data,
+  // so a revisit renders real cards immediately instead of placeholder ones.
+  const [universities, setUniversities] = useState(
+    () =>
+      getCache(
+        uniListCacheKey({
+          search: initialSearch.trim(),
+          country: initialCountry !== 'All' ? initialCountry : '',
+        })
+      ) || initialUniversities
+  );
+  const [availableSubjects, setAvailableSubjects] = useState(() => getCache('uni:subjects') || DEFAULT_SUBJECTS);
 
   // Admin state
   const [isAdmin, setIsAdmin] = useState(() => {
@@ -46,8 +66,6 @@ const UniversityPage = () => {
   const [uniFeedback, setUniFeedback] = useState(null);
 
   // Search state
-  const initialSearch = searchParams.get('search') || '';
-  const initialCountry = searchParams.get('country') || 'All';
   const [searchQuery, setSearchQuery] = useState(initialSearch);
 
   // Applied Filter states (updated only when user clicks Apply Filters or Reset)
@@ -115,13 +133,20 @@ const UniversityPage = () => {
   }, [location.state, universities]);
 
   // Followed universities state
-  const [followedUniIds, setFollowedUniIds] = useState(new Set());
+  const [followedUniIds, setFollowedUniIds] = useState(() => new Set(getCache('uni:followed') || []));
   const [onlyFollowed, setOnlyFollowed] = useState(false);
 
   // Load followed universities IDs from backend
   const loadFollowedIds = useCallback(async () => {
     if (!localStorage.getItem('token')) {
       setFollowedUniIds(new Set());
+      setCache('uni:followed', []);
+      return;
+    }
+
+    const cached = getCache('uni:followed');
+    if (Array.isArray(cached)) {
+      setFollowedUniIds(new Set(cached));
       return;
     }
 
@@ -129,6 +154,7 @@ const UniversityPage = () => {
       const res = await api.get('/universities/followed/ids');
       if (res.data?.success && Array.isArray(res.data.followedIds)) {
         setFollowedUniIds(new Set(res.data.followedIds));
+        setCache('uni:followed', res.data.followedIds);
       }
     } catch (err) {
       console.warn('Could not load followed universities IDs:', err?.message);
@@ -148,6 +174,7 @@ const UniversityPage = () => {
           } else {
             next.delete(universityId);
           }
+          setCache('uni:followed', [...next]);
           return next;
         });
       }
@@ -164,17 +191,20 @@ const UniversityPage = () => {
 
   // Load available subjects from backend in background
   useEffect(() => {
+    if (getCache('uni:subjects')) return undefined;
     const fetchSubjects = async () => {
       try {
         const res = await api.get('/universities/subjects');
         if (res.data?.success && Array.isArray(res.data.data) && res.data.data.length > 1) {
           setAvailableSubjects(res.data.data);
+          setCache('uni:subjects', res.data.data);
         }
       } catch (e) {
         // Keep initial subjects
       }
     };
     fetchSubjects();
+    return undefined;
   }, []);
 
   // Fetch universities with applied filters from backend
@@ -191,9 +221,17 @@ const UniversityPage = () => {
       if (appliedBudget !== 'All') params.budget = appliedBudget;
       if (appliedIelts !== 'All') params.maxIelts = Number(appliedIelts);
 
+      const cacheKey = uniListCacheKey(params);
+      const cached = getCache(cacheKey);
+      if (cached) {
+        setUniversities(cached);
+        return;
+      }
+
       const response = await api.get('/universities', { params });
       if (response.data?.data && response.data.data.length > 0) {
         setUniversities(response.data.data);
+        setCache(cacheKey, response.data.data);
       }
     } catch (requestError) {
       console.warn('API fetch notice, using responsive dataset:', requestError?.message);
@@ -352,7 +390,7 @@ const UniversityPage = () => {
     searchQuery;
 
   return (
-    <section className="space-y-6 animate-fade-in">
+    <section className="space-y-6">
       {/* Admin Quick Action Banner */}
       {isAdmin && (
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3 rounded-2xl border border-primary/25 bg-primary/5 p-4 text-xs shadow-xs">
@@ -377,25 +415,6 @@ const UniversityPage = () => {
 
       {/* Top Banner with Search Bar */}
       <div className="rounded-3xl border border-slate-200 bg-white p-6 md:p-8 shadow-sm">
-        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-          <div className="inline-flex rounded-full bg-slate-100 p-1">
-            <span className="rounded-full bg-white px-4 py-1.5 text-xs font-bold text-primary shadow-sm">Universities</span>
-            <Link
-              to="/professors"
-              className="inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-xs font-bold text-slate-600 transition hover:text-primary"
-            >
-              <GraduationCap size={13} /> Professors
-            </Link>
-          </div>
-
-          <Link
-            to="/professors"
-            className="text-xs font-semibold text-brand hover:underline"
-          >
-            Looking for a supervisor? Browse the faculty directory →
-          </Link>
-        </div>
-
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2">
@@ -520,9 +539,7 @@ const UniversityPage = () => {
                 });
                 setUniFeedback(null);
               }}
-              onScholarshipClick={(uni) => {
-                navigate(`/scholarships?search=${encodeURIComponent(uni.country)}`);
-              }}
+              onCheckFit={(item) => startFitCheck(navigate, 'university', item)}
             />
           ))}
         </div>
@@ -533,6 +550,7 @@ const UniversityPage = () => {
         <UniversityDetailModal
           university={activeModalUni}
           onClose={() => setActiveModalUni(null)}
+          onCheckFit={(item) => startFitCheck(navigate, 'university', item)}
           onEditClick={(uni) => {
             setActiveModalUni(null);
             setEditingUni({

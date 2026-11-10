@@ -16,6 +16,7 @@ import {
   DollarSign,
   ArrowRight,
   ShieldCheck,
+  Sparkles,
 } from 'lucide-react';
 
 const currencyFormatter = new Intl.NumberFormat('en-US', {
@@ -24,7 +25,7 @@ const currencyFormatter = new Intl.NumberFormat('en-US', {
   maximumFractionDigits: 0,
 });
 
-const ScholarshipDetailModal = ({ scholarship, onClose, onUniversityClick }) => {
+const ScholarshipDetailModal = ({ scholarship, onClose, onCheckFit, onUniversityClick }) => {
   // Lock background scroll and listen for Escape key
   useEffect(() => {
     const originalOverflow = document.body.style.overflow;
@@ -278,6 +279,17 @@ const ScholarshipDetailModal = ({ scholarship, onClose, onUniversityClick }) => 
           <div className="flex items-center gap-2.5">
             <Button variant="outline" onClick={onClose} className="text-xs py-2 px-4">
               Close
+            </Button>
+            <Button
+              variant="accent"
+              onClick={() => {
+                onClose?.();
+                onCheckFit?.(scholarship);
+              }}
+              className="text-xs py-2 px-4 inline-flex items-center gap-1.5 font-bold"
+            >
+              <Sparkles className="h-3.5 w-3.5" />
+              Check Fit
             </Button>
             {websiteUrl && (
               <Button

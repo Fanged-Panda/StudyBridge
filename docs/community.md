@@ -69,8 +69,8 @@ node -e 'import("./src/config/database.js").then(async ({default:p}) => {
 })'
 ```
 
-Email (Resend) is only used by the legacy magic-link/contact flows; posting, voting
-and replying need no email configuration.
+Email (SMTP) is only used by the magic-link/contact flows; posting, voting and
+replying need no email configuration.
 
 ---
 
@@ -162,8 +162,8 @@ A post payload looks like:
 - **Comment identity:** the display name is the member's first name taken from the
   JWT subject, so there is no free-text name field to spoof or fill in.
 - **Author contact:** every new post is contactable by default (the form has an opt-out
-  checkbox); the message is emailed to the author through Resend and the sender's
-  address is only used as `reply_to`.
+  checkbox); the message is emailed to the author over SMTP and the sender's
+  address is only used as the reply-to.
 - **Uploads:** the cover image is resized in the browser (max 1200 px wide JPEG) and
   capped at 400 KB server-side, so no object store is needed.
 - **Votes:** unique per `(post, member)` at the database level, so duplicate or
@@ -176,9 +176,10 @@ A post payload looks like:
 1. `npx prisma db push` against the production database (adds `JourneyVote`,
    `Journey.authorId`, `JourneyComment.parentId`).
 2. Deploy the backend with the existing `DATABASE_URL`, `DIRECT_URL`, `JWT_SECRET`
-   and `RESEND_API_KEY` / `EMAIL_FROM` / `PUBLIC_APP_URL` for the author-contact
-   emails. With a pooled (PgBouncer/Neon) URL, keep `?pgbouncer=true` on
-   `DATABASE_URL` so Prisma does not use prepared statements.
+   and `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASS` (optionally
+   `SMTP_SECURE` / `SMTP_FROM`) plus `PUBLIC_APP_URL` for the author-contact and
+   password-reset emails. With a pooled (PgBouncer/Neon) URL, keep
+   `?pgbouncer=true` on `DATABASE_URL` so Prisma does not use prepared statements.
 3. `npm run build --prefix frontend` and serve `frontend/dist` with
    `VITE_API_BASE_URL=https://api.your-domain.com/api`.
 4. Keep `X-Forwarded-For` intact behind a proxy so rate limiting sees real client IPs.

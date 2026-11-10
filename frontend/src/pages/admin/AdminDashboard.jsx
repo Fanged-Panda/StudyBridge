@@ -23,25 +23,30 @@ import Button from '../../components/ui/Button';
 import Badge from '../../components/ui/Badge';
 import Card from '../../components/ui/Card';
 import AdminJourneyPanel from '../../features/community/AdminJourneyPanel';
+import { clearCache, getCache, setCache } from '../../services/pageCache';
 
 const HACKER_AVATAR =
   'https://api.dicebear.com/9.x/bottts/svg?seed=CyberHacker&backgroundColor=041d1a';
 
 const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState('universities'); // 'universities' | 'announcements' | 'scholarships'
-  const [stats, setStats] = useState({
-    universityCount: 0,
-    scholarshipCount: 0,
-    studentCount: 0,
-    totalFollows: 0,
-    totalNotificationsSent: 0,
-  });
-  const [statsLoading, setStatsLoading] = useState(true);
+  const cachedStats = getCache('admin:stats');
+  const [stats, setStats] = useState(() =>
+    cachedStats || {
+      universityCount: 0,
+      scholarshipCount: 0,
+      studentCount: 0,
+      totalFollows: 0,
+      totalNotificationsSent: 0,
+    }
+  );
+  const [statsLoading, setStatsLoading] = useState(!cachedStats);
 
   // Universities list & editing
-  const [universities, setUniversities] = useState([]);
+  const cachedUniversities = getCache('admin:universities');
+  const [universities, setUniversities] = useState(cachedUniversities || []);
   const [uniSearch, setUniSearch] = useState('');
-  const [uniLoading, setUniLoading] = useState(false);
+  const [uniLoading, setUniLoading] = useState(!cachedUniversities);
   const [selectedUni, setSelectedUni] = useState(null);
   const [editingUni, setEditingUni] = useState(null);
   const [savingUni, setSavingUni] = useState(false);
@@ -56,7 +61,7 @@ const AdminDashboard = () => {
   const [announceFeedback, setAnnounceFeedback] = useState(null);
 
   // Scholarships list & editing
-  const [scholarships, setScholarships] = useState([]);
+  const [scholarships, setScholarships] = useState(() => getCache('admin:scholarships') || []);
   const [schSearch, setSchSearch] = useState('');
   const [editingSch, setEditingSch] = useState(null);
   const [savingSch, setSavingSch] = useState(false);
@@ -64,10 +69,10 @@ const AdminDashboard = () => {
   // Load Admin Stats
   const loadStats = useCallback(async () => {
     try {
-      setStatsLoading(true);
       const res = await api.get('/admin/stats');
       if (res.data?.success) {
         setStats(res.data.data);
+        setCache('admin:stats', res.data.data);
       }
     } catch (err) {
       console.warn('Failed to load admin stats:', err);
@@ -79,10 +84,10 @@ const AdminDashboard = () => {
   // Load Universities
   const loadUniversities = useCallback(async () => {
     try {
-      setUniLoading(true);
       const res = await api.get('/universities', { params: { limit: 100 } });
       if (res.data?.data) {
         setUniversities(res.data.data);
+        setCache('admin:universities', res.data.data);
       }
     } catch (err) {
       console.warn('Failed to load universities in admin:', err);
@@ -97,6 +102,7 @@ const AdminDashboard = () => {
       const res = await api.get('/scholarships', { params: { limit: 100 } });
       if (res.data?.data) {
         setScholarships(res.data.data);
+        setCache('admin:scholarships', res.data.data);
       }
     } catch (err) {
       console.warn('Failed to load scholarships in admin:', err);
@@ -152,6 +158,8 @@ const AdminDashboard = () => {
         setUniversities((prev) =>
           prev.map((u) => (u.id === editingUni.id ? { ...u, ...res.data.data } : u))
         );
+        // Public directory caches hold the old tuition/deadline values.
+        clearCache('uni:list:');
 
         loadStats();
         setTimeout(() => {

@@ -1,12 +1,12 @@
 /**
  * Outbound email for the community module.
  *
- * Uses Resend's REST API (no SDK needed). When RESEND_API_KEY / EMAIL_FROM are
- * missing the message is logged instead of sent, so local development still
- * walks through the whole flow without a real inbox.
+ * Sends over SMTP (see services/mailer.js for the SMTP_* variables). When SMTP
+ * is not configured the message is logged instead of sent, so local
+ * development still walks through the whole flow without a real inbox.
  */
 
-const RESEND_ENDPOINT = 'https://api.resend.com/emails';
+import { escapeHtml, isSmtpConfigured, sendSmtpMail } from '../../services/mailer.js';
 
 export function appUrl() {
   const raw = process.env.PUBLIC_APP_URL || process.env.APP_URL || 'http://localhost:5173';
@@ -14,16 +14,7 @@ export function appUrl() {
 }
 
 export function isEmailConfigured() {
-  return Boolean(process.env.RESEND_API_KEY && process.env.EMAIL_FROM);
-}
-
-function escapeHtml(value) {
-  return String(value ?? '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
+  return isSmtpConfigured();
 }
 
 function wrapHtml(bodyHtml) {
@@ -41,59 +32,16 @@ function wrapHtml(bodyHtml) {
  * Send one email. Never throws: callers decide how to report a failed send.
  */
 export async function sendEmail({ to, subject, text, html, replyTo }) {
-  const payload = {
-    from: process.env.EMAIL_FROM || 'StudyBridge <onboarding@resend.dev>',
-    to: [to],
-    subject,
-    text,
-    html: html || wrapHtml(`<pre style="white-space:pre-wrap;font-family:inherit;font-size:14px;">${escapeHtml(text)}</pre>`),
-  };
-  if (replyTo) payload.reply_to = replyTo;
+  const messageHtml =
+    html || wrapHtml(`<pre style="white-space:pre-wrap;font-family:inherit;font-size:14px;">${escapeHtml(text)}</pre>`);
 
   if (!isEmailConfigured()) {
-    console.info('[community] email not sent (RESEND_API_KEY/EMAIL_FROM missing)');
+    console.info('[community] email not sent (SMTP_HOST/SMTP_USER/SMTP_PASS missing)');
     console.info(`  to: ${to}\n  subject: ${subject}\n  ${String(text).split('\n').join('\n  ')}`);
     return { delivered: false, reason: 'not_configured' };
   }
 
-  try {
-    const response = await fetch(RESEND_ENDPOINT, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload),
-    });
-
-    if (!response.ok) {
-      const raw = await response.text().catch(() => '');
-      let providerMessage = raw.slice(0, 300);
-      let providerCode = null;
-      try {
-        const parsed = JSON.parse(raw);
-        providerMessage = parsed.message || providerMessage;
-        providerCode = parsed.name || null;
-      } catch {
-        /* provider returned plain text */
-      }
-      console.error('[community] Resend rejected the message:', response.status, providerCode || '', providerMessage);
-
-      const domainNotVerified = /domain is not verified|not verified/i.test(providerMessage);
-      return {
-        delivered: false,
-        reason: domainNotVerified ? 'sender_domain_not_verified' : 'provider_error',
-        status: response.status,
-        detail: providerMessage,
-      };
-    }
-
-    const accepted = await response.json().catch(() => ({}));
-    return { delivered: true, id: accepted?.id || null };
-  } catch (error) {
-    console.error('[community] Email transport failed:', error?.message);
-    return { delivered: false, reason: 'network_error' };
-  }
+  return sendSmtpMail({ to, subject, text, html: messageHtml, replyTo });
 }
 
 export async function sendContactEmail({ journey, senderName, senderEmail, message }) {

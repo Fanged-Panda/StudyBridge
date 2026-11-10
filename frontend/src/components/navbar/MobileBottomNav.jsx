@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 
+const EXPLORE_PATHS = ['/universities', '/scholarships', '/professors'];
+
 const items = [
   { to: '/', label: 'Home', icon: 'home' },
-  { to: '/universities', label: 'University', icon: 'school' },
+  { to: '/universities', label: 'Explore', icon: 'explore', matches: EXPLORE_PATHS },
   { to: '/profile', label: 'Profile', icon: 'person' },
-  { to: '/scholarships', label: 'Scholarship', icon: 'payments' },
   { to: '/wordlab', label: 'WordLab', icon: 'menu_book' },
   { to: '/community', label: 'Community', icon: 'groups' },
   { to: '/chatbot', label: 'Chatbot', icon: 'smart_toy' },
@@ -32,13 +33,15 @@ const MobileBottomNav = () => {
     return false;
   };
 
-  const visibleItems = items.filter((item) => isLoggedIn || item.to !== '/profile');
+  const visibleItems = items.filter(
+    (item) => isLoggedIn || (item.to !== '/profile' && item.to !== '/wordlab')
+  );
 
   return (
     <nav className="fixed inset-x-3 bottom-4 z-50 sm:inset-x-6 sm:bottom-6 md:hidden" aria-label="Primary">
       <div className="flex h-16 items-center justify-around rounded-2xl border border-outline/70 bg-white/85 px-1.5 shadow-2xl backdrop-blur-xl">
         {visibleItems.map((item) => {
-          const active = isActive(item.to);
+          const active = item.matches ? item.matches.some((path) => location.pathname.startsWith(path)) : isActive(item.to);
           return (
             <Link
               key={item.to}

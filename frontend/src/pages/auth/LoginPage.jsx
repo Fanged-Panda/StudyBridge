@@ -218,18 +218,20 @@ const LoginPage = () => {
                 />
               </div>
             </div>
-            <button
-              type="submit"
-              disabled={authLoading}
-              className="w-full max-w-[200px] bg-primary text-white font-bold py-2 rounded-full hover:opacity-90 active:scale-95 transition-all uppercase tracking-widest text-xs shadow-lg disabled:opacity-60 disabled:cursor-not-allowed"
-            >
+            <div className="mb-3 flex w-full max-w-xs justify-end">
               <button
                 type="button"
                 onClick={() => setForgotOpen(true)}
-                className="mb-5 text-xs font-semibold text-accent underline-offset-2 hover:underline"
+                className="text-xs font-semibold text-accent underline-offset-2 hover:underline"
               >
                 Forgot password?
               </button>
+            </div>
+            <button
+              type="submit"
+              disabled={authLoading}
+              className="w-full max-w-xs bg-primary text-white font-bold py-2 rounded-full hover:opacity-90 active:scale-95 transition-all uppercase tracking-widest text-xs shadow-lg disabled:opacity-60 disabled:cursor-not-allowed"
+            >
               {authLoading ? 'Signing in…' : 'SIGN IN'}
             </button>
           </form>
@@ -387,18 +389,20 @@ const LoginPage = () => {
                     }}
                   />
                 </div>
+                <div className="-mt-1 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setForgotOpen(true)}
+                    className="text-[12px] font-semibold text-accent underline-offset-2 hover:underline"
+                  >
+                    Forgot password?
+                  </button>
+                </div>
                 <button
                   type="submit"
                   disabled={authLoading}
-                  className="mt-2 w-full py-4 bg-[#031632] text-white rounded-full text-[12px] font-bold tracking-[0.1em] uppercase shadow-lg btn-active relative overflow-hidden disabled:opacity-60 disabled:cursor-not-allowed"
+                  className="w-full py-4 bg-[#031632] text-white rounded-full text-[12px] font-bold tracking-[0.1em] uppercase shadow-lg btn-active relative overflow-hidden disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                <button
-                  type="button"
-                  onClick={() => setForgotOpen(true)}
-                  className="-mt-1 self-end text-[12px] font-semibold text-accent underline-offset-2 hover:underline"
-                >
-                  Forgot password?
-                </button>
                   {authLoading ? 'Signing in…' : 'Sign In'}
                 </button>
               </form>

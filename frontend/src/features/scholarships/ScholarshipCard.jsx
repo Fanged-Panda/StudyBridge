@@ -1,7 +1,7 @@
 import Badge from '../../components/ui/Badge';
 import Button from '../../components/ui/Button';
 import Card from '../../components/ui/Card';
-import { Award, Calendar, CheckCircle2, Globe, ArrowRight, ExternalLink, BadgeCheck } from 'lucide-react';
+import { Award, Calendar, CheckCircle2, Globe, Sparkles, ExternalLink, BadgeCheck } from 'lucide-react';
 
 const currencyFormatter = new Intl.NumberFormat('en-US', {
   style: 'currency',
@@ -9,7 +9,7 @@ const currencyFormatter = new Intl.NumberFormat('en-US', {
   maximumFractionDigits: 0,
 });
 
-const ScholarshipCard = ({ scholarship, onSelect }) => {
+const ScholarshipCard = ({ scholarship, onSelect, onCheckFit }) => {
   const {
     id,
     name,
@@ -37,9 +37,23 @@ const ScholarshipCard = ({ scholarship, onSelect }) => {
             <Badge variant="brand">{country}</Badge>
           </div>
 
-          <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700">
-            <BadgeCheck className="h-3 w-3" /> Live
-          </span>
+          <div className="flex shrink-0 items-center gap-1.5">
+            <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700">
+              <BadgeCheck className="h-3 w-3" /> Live
+            </span>
+            {websiteUrl && (
+              <a
+                href={websiteUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center rounded-full border border-slate-200 p-1.5 text-slate-500 transition hover:border-accent hover:text-accent"
+                title="Open the official scholarship page"
+                aria-label="Open the official scholarship page"
+              >
+                <ExternalLink className="h-3.5 w-3.5" />
+              </a>
+            )}
+          </div>
         </div>
 
         {/* Title */}
@@ -93,30 +107,22 @@ const ScholarshipCard = ({ scholarship, onSelect }) => {
         )}
       </div>
 
-      {/* Action Footer */}
-      <div className="mt-5 pt-4 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2">
-        {websiteUrl ? (
-          <Button
-            variant="outline"
-            href={websiteUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="text-xs py-2 px-3.5 inline-flex items-center gap-1"
-          >
-            Official Site
-            <ExternalLink className="h-3 w-3" />
-          </Button>
-        ) : (
-          <div />
-        )}
-
+      {/* Two primary actions; everything else lives in the details view */}
+      <div className="mt-5 grid grid-cols-2 gap-2 border-t border-slate-100 pt-4">
         <Button
-          variant="primary"
+          variant="secondary"
           onClick={() => onSelect?.(scholarship)}
-          className="text-xs py-2 px-4 inline-flex items-center gap-1.5"
+          className="text-xs py-2 px-3 inline-flex items-center justify-center gap-1.5"
         >
-          Check Fit & Details
-          <ArrowRight className="h-3.5 w-3.5" />
+          Details
+        </Button>
+        <Button
+          variant="accent"
+          onClick={() => onCheckFit?.(scholarship)}
+          className="text-xs py-2 px-3 inline-flex items-center justify-center gap-1.5"
+        >
+          <Sparkles className="h-3.5 w-3.5" />
+          Check Fit
         </Button>
       </div>
     </Card>

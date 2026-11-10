@@ -22,12 +22,15 @@ import ReportModal from '../../features/community/ReportModal';
 import VoteControl from '../../features/community/VoteControl';
 import { formatDate, readingTime } from '../../features/community/format';
 import { communityApi } from '../../services/api';
+import { getCache, setCache } from '../../services/pageCache';
 
 const JourneyDetailPage = () => {
   const { slug } = useParams();
   const navigate = useNavigate();
-  const [journey, setJourney] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const cacheKey = `journey:${slug}`;
+  const cachedJourney = getCache(cacheKey);
+  const [journey, setJourney] = useState(cachedJourney ?? null);
+  const [loading, setLoading] = useState(!cachedJourney);
   const [error, setError] = useState('');
   const [notFound, setNotFound] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
@@ -38,14 +41,23 @@ const JourneyDetailPage = () => {
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
+    const cached = getCache(cacheKey);
+    if (cached) {
+      setJourney(cached);
+      setLoading(false);
+    } else {
+      setJourney(null);
+      setLoading(true);
+    }
     setError('');
     setNotFound(false);
 
     communityApi
       .journey(slug)
       .then((data) => {
-        if (!cancelled) setJourney(data);
+        if (cancelled) return;
+        setJourney(data);
+        setCache(cacheKey, data);
       })
       .catch((err) => {
         if (cancelled) return;
@@ -59,7 +71,7 @@ const JourneyDetailPage = () => {
     return () => {
       cancelled = true;
     };
-  }, [slug]);
+  }, [slug, cacheKey]);
 
   const handleDelete = async () => {
     setDeleting(true);

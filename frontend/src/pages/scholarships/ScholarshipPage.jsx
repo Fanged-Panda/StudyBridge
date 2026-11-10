@@ -9,29 +9,39 @@ import {
 import { Search, RotateCcw, BadgeCheck, X, Award } from 'lucide-react';
 import Button from '../../components/ui/Button';
 import { initialScholarships } from '../../data/initialData';
+import { startFitCheck } from '../../features/ai';
+import { getCache, setCache } from '../../services/pageCache';
+
+const DEFAULT_COUNTRIES = [
+  'All',
+  'Australia',
+  'Canada',
+  'Europe',
+  'Germany',
+  'Japan',
+  'South Korea',
+  'Switzerland',
+  'UK',
+  'USA',
+];
+
+const scholarshipListCacheKey = (params = {}) =>
+  ['sch:list', params.limit || 100, params.sort || 'amount', params.search || '', params.country || '', params.fundingLevel || ''].join('|');
 
 const ScholarshipPage = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Instant initial data
-  const [scholarships, setScholarships] = useState(initialScholarships);
-  const [availableCountries, setAvailableCountries] = useState([
-    'All',
-    'Australia',
-    'Canada',
-    'Europe',
-    'Germany',
-    'Japan',
-    'South Korea',
-    'Switzerland',
-    'UK',
-    'USA',
-  ]);
+  const initialSearch = searchParams.get('search') || '';
+
+  // Instant initial data: last cached results, otherwise the seed set.
+  const [scholarships, setScholarships] = useState(
+    () => getCache(scholarshipListCacheKey({ search: initialSearch.trim() })) || initialScholarships
+  );
+  const [availableCountries, setAvailableCountries] = useState(() => getCache('sch:countries') || DEFAULT_COUNTRIES);
 
   // Search state
-  const initialSearch = searchParams.get('search') || '';
   const [searchQuery, setSearchQuery] = useState(initialSearch);
 
   // Applied Filter states (updated only when user clicks Apply Filters or Reset)
@@ -69,17 +79,20 @@ const ScholarshipPage = () => {
 
   // Load unique countries in background
   useEffect(() => {
+    if (getCache('sch:countries')) return undefined;
     const fetchCountries = async () => {
       try {
         const res = await api.get('/scholarships/countries');
         if (res.data?.success && Array.isArray(res.data.data) && res.data.data.length > 1) {
           setAvailableCountries(res.data.data);
+          setCache('sch:countries', res.data.data);
         }
       } catch (e) {
         // Keep initial country list
       }
     };
     fetchCountries();
+    return undefined;
   }, []);
 
   // Fetch scholarships from backend
@@ -94,9 +107,17 @@ const ScholarshipPage = () => {
       if (appliedCountry !== 'All') params.country = appliedCountry;
       if (appliedFunding !== 'All') params.fundingLevel = appliedFunding;
 
+      const cacheKey = scholarshipListCacheKey(params);
+      const cached = getCache(cacheKey);
+      if (cached) {
+        setScholarships(cached);
+        return;
+      }
+
       const response = await api.get('/scholarships', { params });
       if (response.data?.data && response.data.data.length > 0) {
         setScholarships(response.data.data);
+        setCache(cacheKey, response.data.data);
       }
     } catch (requestError) {
       console.warn('Scholarship API notice, using responsive dataset:', requestError?.message);
@@ -173,7 +194,7 @@ const ScholarshipPage = () => {
     searchQuery;
 
   return (
-    <section className="space-y-6 animate-fade-in">
+    <section className="space-y-6">
       {/* Hero Header */}
       <div className="rounded-3xl border border-slate-200 bg-white p-6 md:p-8 shadow-sm">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -266,6 +287,7 @@ const ScholarshipPage = () => {
               key={scholarship.id || scholarship.name}
               scholarship={scholarship}
               onSelect={handleOpenDetails}
+              onCheckFit={(item) => startFitCheck(navigate, 'scholarship', item)}
             />
           ))}
         </div>
@@ -276,6 +298,7 @@ const ScholarshipPage = () => {
         <ScholarshipDetailModal
           scholarship={activeModalScholarship}
           onClose={() => setActiveModalScholarship(null)}
+          onCheckFit={(item) => startFitCheck(navigate, 'scholarship', item)}
           onUniversityClick={(uni) => {
             navigate(`/universities?search=${encodeURIComponent(uni.name)}`);
           }}

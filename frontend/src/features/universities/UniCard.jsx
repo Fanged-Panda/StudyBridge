@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import Button from '../../components/ui/Button';
 import Card from '../../components/ui/Card';
 import Badge from '../../components/ui/Badge';
-import { BookOpen, Bookmark, BookmarkCheck, ArrowRight, BadgeCheck, Edit3 } from 'lucide-react';
+import { BookOpen, Bookmark, BookmarkCheck, ArrowRight, BadgeCheck, Edit3, Sparkles } from 'lucide-react';
 import { isBookmarked, toggleBookmark } from '../../services/bookmarks';
 import api from '../../services/api';
 
@@ -21,7 +21,7 @@ const UniCard = (props) => {
     ranking: propRanking,
     tuition: propTuition,
     onSelect,
-    onScholarshipClick,
+    onCheckFit,
     onEditClick,
   } = props;
 
@@ -144,25 +144,42 @@ const UniCard = (props) => {
             )}
           </div>
 
-          <button
-            type="button"
-            onClick={handleBookmark}
-            disabled={savingBookmark}
-            aria-pressed={isSaved}
-            className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-bold transition disabled:opacity-60 ${
-              isSaved
-                ? 'border-brand bg-brand text-white hover:bg-primary'
-                : 'border-slate-200 bg-slate-50 text-slate-700 hover:border-accent hover:bg-accent/5 hover:text-accent'
-            }`}
-            title={
-              isSaved
-                ? 'Saved to your profile. Click to remove and stop updates.'
-                : 'Save to your profile and get notifications about admission changes'
-            }
-          >
-            {isSaved ? <BookmarkCheck className="h-3.5 w-3.5" /> : <Bookmark className="h-3.5 w-3.5" />}
-            <span>{isSaved ? 'Saved' : 'Save'}</span>
-          </button>
+          <div className="flex shrink-0 items-center gap-1.5">
+            <button
+              type="button"
+              onClick={handleBookmark}
+              disabled={savingBookmark}
+              aria-pressed={isSaved}
+              className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-bold transition disabled:opacity-60 ${
+                isSaved
+                  ? 'border-brand bg-brand text-white hover:bg-primary'
+                  : 'border-slate-200 bg-slate-50 text-slate-700 hover:border-accent hover:bg-accent/5 hover:text-accent'
+              }`}
+              title={
+                isSaved
+                  ? 'Saved to your profile. Click to remove and stop updates.'
+                  : 'Save to your profile and get notifications about admission changes'
+              }
+            >
+              {isSaved ? <BookmarkCheck className="h-3.5 w-3.5" /> : <Bookmark className="h-3.5 w-3.5" />}
+              <span>{isSaved ? 'Saved' : 'Save'}</span>
+            </button>
+
+            {isAdmin && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEditClick?.(uni);
+                }}
+                className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 p-1.5 text-primary transition hover:border-brand hover:bg-brand/5"
+                title="Edit university details"
+                aria-label="Edit university details"
+              >
+                <Edit3 className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Title */}
@@ -234,40 +251,24 @@ const UniCard = (props) => {
         )}
       </div>
 
-      {/* Action Buttons */}
-      <div className="mt-5 pt-4 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2">
+      {/* Two primary actions; everything else lives in the details view */}
+      <div className="mt-5 grid grid-cols-2 gap-2 border-t border-slate-100 pt-4">
         <Button
-          variant="outline"
-          onClick={() => onScholarshipClick?.(uni)}
-          className="text-xs py-2 px-3.5"
+          variant="primary"
+          onClick={() => onSelect?.(uni)}
+          className="text-xs py-2 px-3 inline-flex items-center justify-center gap-1.5"
         >
-          Scholarships
+          Details
+          <ArrowRight className="h-3.5 w-3.5" />
         </Button>
-
-        <div className="flex items-center gap-2">
-          {isAdmin && (
-            <Button
-              variant="outline"
-              onClick={(e) => {
-                e.stopPropagation();
-                onEditClick?.(uni);
-              }}
-              className="text-xs py-2 px-3 inline-flex items-center gap-1 border-primary/30 text-primary hover:bg-primary hover:text-white font-bold transition shadow-xs"
-            >
-              <Edit3 className="h-3.5 w-3.5 text-accent" />
-              <span>Edit & Notify</span>
-            </Button>
-          )}
-
-          <Button
-            variant="primary"
-            onClick={() => onSelect?.(uni)}
-            className="text-xs py-2 px-4 inline-flex items-center gap-1.5"
-          >
-            View Full Details
-            <ArrowRight className="h-3.5 w-3.5" />
-          </Button>
-        </div>
+        <Button
+          variant="accent"
+          onClick={() => onCheckFit?.(uni)}
+          className="text-xs py-2 px-3 inline-flex items-center justify-center gap-1.5"
+        >
+          <Sparkles className="h-3.5 w-3.5" />
+          Check Fit
+        </Button>
       </div>
     </Card>
   );

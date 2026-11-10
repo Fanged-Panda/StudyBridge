@@ -1,0 +1,137 @@
+/* ===== DESKTOP STYLES ===== */
+.form-container {
+  position: absolute;
+  top: 0;
+  height: 100dvh;
+  transition: all 0.6s ease-in-out;
+}
+.sign-in-container {
+  left: 0;
+  width: 60%;
+  z-index: 2;
+}
+.sign-up-container {
+  left: 0;
+  width: 60%;
+  opacity: 0;
+  z-index: 1;
+}
+.container-slider.right-panel-active .sign-in-container {
+  transform: translateX(66.67%);
+}
+.container-slider.right-panel-active .sign-up-container {
+  transform: translateX(66.67%);
+  opacity: 1;
+  z-index: 5;
+}
+.overlay-container {
+  position: absolute;
+  top: 0;
+  left: 60%;
+  width: 40%;
+  height: 100dvh;
+  overflow: hidden;
+  transition: transform 0.6s ease-in-out;
+  z-index: 100;
+}
+.container-slider.right-panel-active .overlay-container {
+  transform: translateX(-150%);
+}
+.overlay {
+  background: #1a2b48;
+  background: linear-gradient(to right, #1a2b48, #283852);
+  color: #FFFFFF;
+  position: relative;
+  left: -150%;
+  height: 100dvh;
+  width: 250%;
+  transform: translateX(0);
+  transition: transform 0.6s ease-in-out;
+}
+.container-slider.right-panel-active .overlay {
+  transform: translateX(60%);
+}
+.overlay-panel {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  padding: 0 40px;
+  text-align: center;
+  top: 0;
+  height: 100dvh;
+  width: 40%;
+  transition: transform 0.6s ease-in-out;
+}
+.overlay-left {
+  transform: translateX(-20%);
+}
+.container-slider.right-panel-active .overlay-left {
+  transform: translateX(0);
+}
+.overlay-right {
+  right: 0;
+  transform: translateX(0);
+}
+.container-slider.right-panel-active .overlay-right {
+  transform: translateX(20%);
+}
+.auth-input {
+  width: 100%;
+  border-radius: 0.5rem;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  transition: all 0.2s;
+  outline: none;
+}
+.auth-input:focus {
+  box-shadow: 0 0 0 2px rgba(38, 166, 154, 0.2);
+  border-color: #26a69a;
+}
+
+/* ===== MOBILE STYLES ===== */
+.mobile-slider {
+  transition: transform 0.6s cubic-bezier(0.76, 0, 0.24, 1);
+}
+.right-panel-active #info-panel-inner {
+  transform: translateY(-50%);
+}
+.right-panel-active #form-panel-inner {
+  transform: translateY(-50%);
+}
+
+/* Micro-interactions */
+.btn-active:active {
+  transform: scale(0.96) !important;
+}
+
+/* Error stack items — slide in from the top, hold, then fade out over 4s (matched to the dismiss timer) */
+.toast-item {
+  animation: toast-item 4s ease forwards;
+}
+@keyframes toast-item {
+  0% { opacity: 0; transform: translateY(-12px); }
+  8% { opacity: 1; transform: translateY(0); }
+  85% { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(-8px); }
+}
+
+/* Material Symbols defaults */
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 10px;
+}

@@ -153,25 +153,26 @@ const TopNav = () => {
 
   const effectiveAvatar = userRole === 'admin' ? HACKER_AVATAR : avatar;
 
+  const EXPLORE_PATHS = ['/universities', '/scholarships', '/professors'];
+
   const navItems =
     userRole === 'admin'
       ? [
           { to: '/', label: 'Home' },
-          { to: '/universities', label: 'University' },
+          { to: '/universities', label: 'Explore', matches: EXPLORE_PATHS },
           { to: '/admin', label: 'Admin', isAdminPill: true },
-          { to: '/scholarships', label: 'Scholarship' },
-          { to: '/professors', label: 'Professors' },
           { to: '/wordlab', label: 'WordLab' },
           { to: '/community', label: 'Community' },
           { to: '/chatbot', label: 'Chatbot' },
         ]
-      : [
-          { to: '/', label: 'Home' },
-          { to: '/universities', label: 'University' },
-          ...(isLoggedIn ? [{ to: '/profile', label: 'Profile' }] : []),
-          { to: '/scholarships', label: 'Scholarship' },
-          ...(isLoggedIn ? [{ to: '/professors', label: 'Professors', wideOnly: true }] : []),
-          { to: '/wordlab', label: 'WordLab' },
+      : [          { to: '/', label: 'Home' },
+          { to: '/universities', label: 'Explore', matches: EXPLORE_PATHS },
+          ...(isLoggedIn
+            ? [
+                { to: '/profile', label: 'Profile' },
+                { to: '/wordlab', label: 'WordLab' },
+              ]
+            : []),
           { to: '/community', label: 'Community' },
           { to: '/chatbot', label: 'Chatbot' },
         ];
@@ -193,7 +194,7 @@ const TopNav = () => {
         {/* Desktop Nav */}
         <nav className="hidden flex-1 items-center justify-center gap-3 md:flex lg:gap-6">
           {navItems.map((item) => {
-            const active = isActive(item.to);
+            const active = item.matches ? item.matches.some((path) => location.pathname.startsWith(path)) : isActive(item.to);
             if (item.isAdminPill) {
               return (
                 <Link
@@ -232,7 +233,7 @@ const TopNav = () => {
             <Button
               to="/login"
               variant="primary"
-              className="inline-flex rounded-full bg-primary px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-opacity-90 sm:px-6"
+              className="inline-flex rounded-full bg-primary px-3.5 py-2 text-xs font-semibold text-white shadow-sm hover:bg-opacity-90 sm:px-6 sm:py-2.5 sm:text-sm"
             >
               Get Started
             </Button>

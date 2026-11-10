@@ -2,6 +2,7 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 import { Search } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../../services/api';
+import { getCache, setCache } from '../../services/pageCache';
 import { initialUniversities, initialScholarships } from '../../data/initialData';
 
 const words = ['University', 'Scholarship', 'Exam', 'Country'];
@@ -14,10 +15,13 @@ const TypewriterHero = () => {
   const [isDeleting, setIsDeleting] = useState(false);
   const navigate = useNavigate();
 
-  const [counts, setCounts] = useState({
-    universities: initialUniversities.length || 50,
-    scholarships: initialScholarships.length || 10,
-    students: 10,
+  const [counts, setCounts] = useState(() => {
+    const cached = getCache('home:stats');
+    return {
+      universities: cached?.universityCount ?? (initialUniversities.length || 50),
+      scholarships: cached?.scholarshipCount ?? (initialScholarships.length || 10),
+      students: cached?.studentCount ?? 10,
+    };
   });
 
   // Search state
@@ -30,10 +34,12 @@ const TypewriterHero = () => {
   const [searchFocused, setSearchFocused] = useState(false);
 
   useEffect(() => {
+    if (getCache('home:stats')) return undefined;
     api.get('/stats')
       .then((res) => {
         const d = res.data?.data;
         if (d) {
+          setCache('home:stats', d);
           setCounts({
             universities: d.universityCount ?? initialUniversities.length,
             scholarships: d.scholarshipCount ?? initialScholarships.length,
@@ -42,6 +48,7 @@ const TypewriterHero = () => {
         }
       })
       .catch(() => {});
+    return undefined;
   }, []);
 
   useEffect(() => {
@@ -215,7 +222,7 @@ const TypewriterHero = () => {
               <Search className="h-5 w-5 text-text-muted shrink-0" />
               <input
                 type="text"
-                className="w-full border-none bg-transparent py-4 text-base placeholder:text-text-muted focus:outline-none focus:ring-0"
+                className="w-full border-none bg-transparent py-3 text-sm placeholder:text-text-muted focus:outline-none focus:ring-0 md:py-4 md:text-base"
                 placeholder="Search universities, scholarships, or exams..."
                 value={query}
                 onChange={handleQueryChange}
@@ -228,9 +235,10 @@ const TypewriterHero = () => {
             <button
               type="button"
               onClick={handleSearchSubmit}
-              className="w-full whitespace-nowrap rounded-xl bg-primary px-10 py-4 font-bold text-white transition-all hover:bg-opacity-90 md:w-auto"
+              className="shrink-0 whitespace-nowrap rounded-xl bg-primary px-4 py-3 text-sm font-bold text-white transition-all hover:bg-opacity-90 md:px-10 md:py-4 md:text-base"
             >
-              Start Exploring
+              <span className="md:hidden">Explore</span>
+              <span className="hidden md:inline">Start Exploring</span>
             </button>
           </div>
 

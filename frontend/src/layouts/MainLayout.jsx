@@ -19,7 +19,11 @@ const MainLayout = ({ children }) => {
         <main className="mx-auto w-full max-w-[1200px] px-8 py-8">{children ?? <Outlet />}</main>
       )}
       <Footer />
-      <FloatingChat />
+      {/* The mobile bottom bar already links to the Chatbot page, so the
+          floating bubble is desktop-only. */}
+      <div className="hidden md:block">
+        <FloatingChat />
+      </div>
     </div>
   );
 };

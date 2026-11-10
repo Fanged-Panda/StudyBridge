@@ -3,10 +3,8 @@ import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-route
 import { flushSync } from 'react-dom';
 import MainLayout from './layouts/MainLayout';
 import Home from './pages/Home';
-import UniversityPage from './pages/universities/UniversityPage';
-import ScholarshipPage from './pages/scholarships/ScholarshipPage';
+import ExplorePage from './pages/explore/ExplorePage';
 import VocabularyPage from './pages/vocabulary/VocabularyPage';
-import ProfessorPage from './pages/professors/ProfessorPage';
 import CommunityPage from './pages/community/CommunityPage';
 import JourneyDetailPage from './pages/community/JourneyDetailPage';
 import SubmitJourneyPage from './pages/community/SubmitJourneyPage';
@@ -99,6 +97,8 @@ const EmptyPage = ({ title }) => {
   );
 };
 
+const EXPLORE_ROUTE_PATHS = new Set(['/universities', '/scholarships', '/professors']);
+
 const ViewTransitionRoutes = () => {
   const location = useLocation();
   const [displayLocation, setDisplayLocation] = useState(location);
@@ -113,6 +113,14 @@ const ViewTransitionRoutes = () => {
 
     const prevPath = prevPathRef.current;
     const nextPath = location.pathname;
+
+    // Tabs inside Explore share one page; switching them should swap content
+    // in place without a page transition.
+    if (EXPLORE_ROUTE_PATHS.has(prevPath) && EXPLORE_ROUTE_PATHS.has(nextPath)) {
+      prevPathRef.current = nextPath;
+      setDisplayLocation(location);
+      return;
+    }
 
     // Skip slide transitions for /login for instant, stable rendering
     if (prevPath === '/login' || nextPath === '/login' || nextPath.startsWith('/login')) {
@@ -153,9 +161,10 @@ const ViewTransitionRoutes = () => {
       <Route element={<MainLayout />}>
         <Route index element={<Home />} />
         <Route path="profile" element={<RequireAuth><ProfileOrAdminGuard /></RequireAuth>} />
-        <Route path="universities" element={<UniversityPage />} />
-        <Route path="scholarships" element={<ScholarshipPage />} />
-        <Route path="professors" element={<ProfessorPage />} />
+        <Route path="explore" element={<Navigate to="/universities" replace />} />
+        <Route path="universities" element={<ExplorePage />} />
+        <Route path="scholarships" element={<ExplorePage />} />
+        <Route path="professors" element={<ExplorePage />} />
         <Route path="wordlab" element={<RequireAuth><VocabularyPage /></RequireAuth>} />
         <Route path="vocabulary" element={<Navigate to="/wordlab" replace />} />
         <Route path="community" element={<CommunityPage />} />

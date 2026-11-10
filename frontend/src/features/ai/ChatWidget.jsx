@@ -40,13 +40,14 @@ const STARTER_TOPICS = [
   },
 ];
 
-const ChatWidget = () => {
+const ChatWidget = ({ initialPrompt = '', fitLabel = '' }) => {
   const [messages, setMessages] = useState(initialMessages);
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const chatContainerRef = useRef(null);
   const inputRef = useRef(null);
   const lastPromptIndexRef = useRef(null);
+  const autoFitSentRef = useRef(false);
 
   // Smoothly scroll to target message or bottom
   const scrollToTarget = (index) => {
@@ -85,12 +86,19 @@ const ChatWidget = () => {
     const newPromptIndex = messages.length;
     lastPromptIndexRef.current = newPromptIndex;
 
+    // Send the recent transcript so the advisor can ask follow-up questions
+    // (needed for a multi-turn fit check) instead of treating each turn alone.
+    const history = messages
+      .filter((entry) => entry.text)
+      .slice(-12)
+      .map((entry) => ({ role: entry.role, content: entry.text }));
+
     setMessages((current) => [...current, { role: 'user', text: textToSend }]);
     setMessage('');
     setLoading(true);
 
     try {
-      const { data } = await api.post('/chat', { message: textToSend });
+      const { data } = await api.post('/chat', { message: textToSend, history });
       setMessages((current) => [...current, { role: 'assistant', text: data.reply }]);
     } catch (err) {
       const errorText =
@@ -103,6 +111,16 @@ const ChatWidget = () => {
       setTimeout(() => inputRef.current?.focus(), 100);
     }
   };
+
+  // A "Check fit" click arrives with an opening prompt. Send it once on mount
+  // so the advisor immediately evaluates the selected university/scholarship.
+  useEffect(() => {
+    if (!initialPrompt || autoFitSentRef.current) return undefined;
+    autoFitSentRef.current = true;
+    handleSend(initialPrompt);
+    return undefined;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialPrompt]);
 
   const handleResetChat = () => {
     setMessages(initialMessages);
@@ -124,7 +142,15 @@ const ChatWidget = () => {
           </div>
           <div>
             <h3 className="text-xs font-bold text-slate-800 sm:text-sm">Counseling Session</h3>
-            <p className="text-[11px] text-slate-500">Live admission & scholarship advisor</p>
+            <p className="text-[11px] text-slate-500">
+              {fitLabel ? (
+                <>
+                  Fit check: <span className="font-semibold text-slate-700">{fitLabel}</span>
+                </>
+              ) : (
+                'Live admission & scholarship advisor'
+              )}
+            </p>
           </div>
         </div>
 

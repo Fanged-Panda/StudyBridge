@@ -1,4 +1,4 @@
-import { Building2, ChevronRight, Mail } from 'lucide-react';
+import { Building2, ChevronRight, ExternalLink, Mail } from 'lucide-react';
 import Badge from '../../components/ui/Badge';
 
 const initialsOf = (name = '') =>
@@ -16,8 +16,21 @@ const fieldChips = (field = '') =>
     .map((piece) => piece.trim())
     .filter(Boolean);
 
+// The directory has no stored Scholar profile URL for every professor, so fall
+// back to a Scholar search for their name and university.
+const scholarUrlFor = (professor) => {
+  if (professor.googleScholarUrl) return professor.googleScholarUrl;
+  if (/scholar\.google\./i.test(professor.profileUrl || '')) return professor.profileUrl;
+
+  const query = [professor.name?.replace(/^(Dr|Prof|Professor)\.?\s+/i, ''), professor.university?.name]
+    .filter(Boolean)
+    .join(' ');
+  return `https://scholar.google.com/scholar?q=${encodeURIComponent(query)}`;
+};
+
 const ProfessorCard = ({ professor, onOpenUniversity, compact = false }) => {
   const fields = fieldChips(professor.field);
+  const scholarUrl = scholarUrlFor(professor);
 
   return (
     <article className="group flex h-full flex-col justify-between rounded-3xl border border-slate-200 bg-white p-5 shadow-sm transition duration-200 hover:border-brand/40 hover:shadow-lg">
@@ -66,14 +79,27 @@ const ProfessorCard = ({ professor, onOpenUniversity, compact = false }) => {
           <Badge>Independent</Badge>
         )}
 
-        {professor.email && (
+        <div className="flex shrink-0 items-center gap-1.5">
           <a
-            href={`mailto:${professor.email}`}
-            className="inline-flex shrink-0 items-center gap-1 rounded-full border border-slate-200 px-2.5 py-1 text-[11px] font-bold text-slate-600 transition hover:border-accent hover:text-accent"
+            href={scholarUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1 rounded-full border border-slate-200 px-2.5 py-1 text-[11px] font-bold text-slate-600 transition hover:border-accent hover:text-accent"
+            title="Open this professor on Google Scholar"
           >
-            <Mail size={11} /> Email
+            <ExternalLink size={11} /> Google Scholar
           </a>
-        )}
+          {professor.email && (
+            <a
+              href={`mailto:${professor.email}`}
+              className="inline-flex items-center rounded-full border border-slate-200 p-1.5 text-slate-600 transition hover:border-accent hover:text-accent"
+              title={`Email ${professor.name}`}
+              aria-label={`Email ${professor.name}`}
+            >
+              <Mail size={11} />
+            </a>
+          )}
+        </div>
       </div>
     </article>
   );

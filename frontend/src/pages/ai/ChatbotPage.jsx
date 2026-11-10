@@ -1,7 +1,27 @@
+import { useEffect, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import ChatWidget from '../../features/ai/ChatWidget';
-import NotificationBell from '../../features/ai/NotificationBell';
+import { clearPendingFitCheck, takePendingFitCheck } from '../../features/ai/fitCheck';
 
 const ChatbotPage = () => {
+  const location = useLocation();
+
+  // A "Check fit" button can hand over an opening prompt either through router
+  // state or, if the visitor had to sign in first, through sessionStorage.
+  const [fitCheck] = useState(() => {
+    const pending = takePendingFitCheck();
+    const statePrompt = location.state?.fitPrompt;
+
+    if (statePrompt) {
+      return { prompt: statePrompt, label: location.state?.fitLabel || pending?.label || '' };
+    }
+    return pending || { prompt: '', label: '' };
+  });
+
+  useEffect(() => {
+    clearPendingFitCheck();
+  }, []);
+
   return (
     <section className="flex flex-col space-y-3">
       {/* Compact Page Header */}
@@ -18,11 +38,10 @@ const ChatbotPage = () => {
             Get instant personalized university recommendations, scholarship matches, and admission advice.
           </p>
         </div>
-        <NotificationBell />
       </div>
 
       {/* Main Chat Interface */}
-      <ChatWidget />
+      <ChatWidget initialPrompt={fitCheck.prompt} fitLabel={fitCheck.label} />
     </section>
   );
 };

@@ -131,13 +131,69 @@ YOUR COUNSELING CAPABILITIES & INTENT-BASED ADAPTATION:
 
 4. Formatting:
    - Clean Markdown with bold highlights, compact bullet points, and headers (###) only when needed for structured multi-section answers.
+
+5. FIT CHECK MODE ("Check fit" requests):
+   - A message that starts with "[FIT CHECK]" asks you to assess whether the student is eligible for ONE specific university or scholarship. The details of that item are stated in the message; earlier turns of the conversation are included for context.
+   - Start from the STUDENT PROFILE above and never ask again for information already listed there.
+   - If important information is still missing (for example target degree level, budget, work experience, backlogs, or English test status), ask at most 3 short numbered questions and then stop. Do not give a verdict in that same reply.
+   - When you have enough information, reply with:
+     * a one-line verdict: **Strong fit**, **Possible with conditions**, or **Not a fit yet**;
+     * a short requirement-by-requirement checklist marking each item **Met**, **Not met** or **Unknown** against the student's profile;
+     * the 2-3 most useful next steps.
+   - If the profile already covers the requirements, give the verdict immediately and state any assumptions you made. Never invent requirements that the item details do not mention.
 `.trim();
 
 // ---------------------------------------------------------------------------
 // Main service function
 // ---------------------------------------------------------------------------
 
-export const sendMessage = async (userId, message) => {
+const MAX_HISTORY_MESSAGES = 20;
+const MAX_HISTORY_CHARS = 6_000;
+
+/**
+ * Turn the client's recent transcript into Gemini contents. Consecutive turns
+ * with the same role are merged (Gemini expects alternating user/model turns),
+ * and leading assistant turns are dropped so the conversation starts with the
+ * student.
+ */
+const buildContents = (history, message) => {
+  const turns = [];
+
+  const push = (role, text) => {
+    if (!text) return;
+    const previous = turns[turns.length - 1];
+    if (previous && previous.role === role) {
+      previous.parts[0].text = `${previous.parts[0].text}\n\n${text}`;
+      return;
+    }
+    turns.push({ role, parts: [{ text }] });
+  };
+
+  if (Array.isArray(history)) {
+    for (const entry of history.slice(-MAX_HISTORY_MESSAGES)) {
+      if (!entry || typeof entry !== 'object') continue;
+
+      const role = entry.role === 'assistant' || entry.role === 'model' ? 'model' : 'user';
+      const raw = typeof entry.content === 'string' ? entry.content : entry.text;
+      if (typeof raw !== 'string') continue;
+
+      const text = raw.slice(0, MAX_HISTORY_CHARS).trim();
+      if (!text) continue;
+
+      push(role, text);
+    }
+  }
+
+  push('user', message.trim());
+
+  while (turns.length > 0 && turns[0].role === 'model') {
+    turns.shift();
+  }
+
+  return turns;
+};
+
+export const sendMessage = async (userId, message, history) => {
   // --- Input validation ---
   if (!message || typeof message !== 'string' || !message.trim()) {
     return { status: 400, body: { success: false, message: 'Message is required.' } };
@@ -192,7 +248,7 @@ export const sendMessage = async (userId, message) => {
         });
 
         const result = await model.generateContent({
-          contents: [{ role: 'user', parts: [{ text: message.trim() }] }],
+          contents: buildContents(history, message),
           generationConfig: {
             temperature: 0.7,
             maxOutputTokens: 8192,

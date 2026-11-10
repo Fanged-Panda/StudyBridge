@@ -3,8 +3,12 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { GraduationCap, Loader2, RefreshCw, Search, Users, X } from 'lucide-react';
 import ProfessorCard from '../../features/professors/ProfessorCard';
 import { professorsApi } from '../../services/api';
+import { getCache, setCache } from '../../services/pageCache';
 
 const PAGE_SIZE = 12;
+const FIELDS_CACHE_KEY = 'professors:fields';
+
+const listCacheKey = (search, field, page) => `professors:list:${search}|${field}|${page}`;
 
 const ProfessorSkeleton = () => (
   <div className="animate-pulse rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -31,15 +35,16 @@ const ProfessorPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const initialSearch = searchParams.get('search') || '';
   const initialField = searchParams.get('field') || '';
+  const cachedList = getCache(listCacheKey(initialSearch, initialField, 1));
 
   const [searchInput, setSearchInput] = useState(initialSearch);
   const [search, setSearch] = useState(initialSearch);
   const [field, setField] = useState(initialField);
   const [page, setPage] = useState(1);
-  const [items, setItems] = useState([]);
-  const [pagination, setPagination] = useState({ page: 1, total: 0, totalPages: 1 });
-  const [fields, setFields] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [items, setItems] = useState(cachedList?.items ?? []);
+  const [pagination, setPagination] = useState(cachedList?.pagination ?? { page: 1, total: 0, totalPages: 1 });
+  const [fields, setFields] = useState(getCache(FIELDS_CACHE_KEY) ?? []);
+  const [loading, setLoading] = useState(!cachedList);
   const [error, setError] = useState('');
 
   // Debounce typing so the directory does not refetch on every keystroke.
@@ -52,6 +57,17 @@ const ProfessorPage = () => {
   }, [searchInput]);
 
   const load = useCallback(async () => {
+    const key = listCacheKey(search, field, page);
+    const cached = getCache(key);
+
+    if (cached) {
+      setItems(cached.items);
+      setPagination(cached.pagination);
+      setError('');
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     setError('');
     try {
@@ -63,6 +79,10 @@ const ProfessorPage = () => {
       });
       setItems(data.items || []);
       setPagination(data.pagination || { page: 1, total: 0, totalPages: 1 });
+      setCache(key, {
+        items: data.items || [],
+        pagination: data.pagination || { page: 1, total: 0, totalPages: 1 },
+      });
     } catch (err) {
       setError(err?.response?.data?.message || 'The faculty directory could not be loaded. Please try again.');
     } finally {
@@ -75,10 +95,16 @@ const ProfessorPage = () => {
   }, [load]);
 
   useEffect(() => {
+    if (getCache(FIELDS_CACHE_KEY)) return undefined;
     professorsApi
       .fields()
-      .then((data) => setFields(Array.isArray(data) ? data : []))
+      .then((data) => {
+        const list = Array.isArray(data) ? data : [];
+        setFields(list);
+        setCache(FIELDS_CACHE_KEY, list);
+      })
       .catch(() => setFields([]));
+    return undefined;
   }, []);
 
   // Keep the URL shareable without adding history entries for every keystroke.
@@ -105,7 +131,7 @@ const ProfessorPage = () => {
   const visibleFields = useMemo(() => fields.slice(0, 14), [fields]);
 
   return (
-    <section className="space-y-6 animate-fade-in">
+    <section className="space-y-6">
       <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm md:p-8">
         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div>
@@ -212,13 +238,6 @@ const ProfessorPage = () => {
             ? 'Loading faculty…'
             : `${pagination.total} ${pagination.total === 1 ? 'professor' : 'professors'}${field ? ` in ${field}` : ''}`}
         </p>
-        <button
-          type="button"
-          onClick={() => navigate('/universities')}
-          className="text-xs font-semibold text-brand hover:underline"
-        >
-          Browse universities instead →
-        </button>
       </div>
 
       {loading ? (

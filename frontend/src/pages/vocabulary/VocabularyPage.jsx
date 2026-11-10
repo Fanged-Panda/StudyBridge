@@ -1,7 +1,17 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { BookOpen, Brain, CheckCircle2, Loader2, RotateCcw, Target, Trophy } from 'lucide-react';
 import { DailyWordCard, VocabularyTest, WordList } from '../../features/vocabulary';
 import { vocabularyApi } from '../../services/api';
+import { getCache, setCache } from '../../services/pageCache';
+
+const userCacheSuffix = () => {
+  try {
+    const user = JSON.parse(localStorage.getItem('userProfile') || '{}');
+    return user.id || user.email || 'guest';
+  } catch {
+    return 'guest';
+  }
+};
 
 const TABS = [
   { id: 'today', label: 'Today’s session' },
@@ -22,15 +32,21 @@ const StatCard = ({ icon: Icon, label, value, hint }) => (
 );
 
 const VocabularyPage = () => {
-  const [dashboard, setDashboard] = useState(null);
-  const [words, setWords] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [wordsLoading, setWordsLoading] = useState(true);
+  const cacheKey = `wordlab:${userCacheSuffix()}`;
+  const cached = getCache(cacheKey);
+
+  const [dashboard, setDashboard] = useState(cached?.dashboard ?? null);
+  const [words, setWords] = useState(cached?.words ?? []);
+  const [loading, setLoading] = useState(!cached?.dashboard);
+  const [wordsLoading, setWordsLoading] = useState(!cached?.words);
   const [error, setError] = useState('');
   const [goalSaving, setGoalSaving] = useState(false);
   const [goalError, setGoalError] = useState('');
-  const [sessionOver, setSessionOver] = useState(false);
+  const [sessionOver, setSessionOver] = useState(() =>
+    cached?.dashboard ? Boolean(cached.dashboard.goalMet) || !cached.dashboard.today : false
+  );
   const [tab, setTab] = useState('today');
+  const hydratedRef = useRef(Boolean(cached?.dashboard));
 
   const loadWords = useCallback(async () => {
     setWordsLoading(true);
@@ -58,9 +74,24 @@ const VocabularyPage = () => {
     await loadWords();
   }, [loadWords]);
 
+  // Fetch on the first visit, then serve the cached snapshot on later visits.
   useEffect(() => {
+    if (hydratedRef.current) return;
+    hydratedRef.current = true;
     loadAll();
   }, [loadAll]);
+
+  // Keep the cached snapshot in sync with every local update (learning a word,
+  // changing the daily goal, finishing a test).
+  useEffect(() => {
+    if (!dashboard) return;
+    setCache(cacheKey, { ...(getCache(cacheKey) || {}), dashboard });
+  }, [cacheKey, dashboard]);
+
+  useEffect(() => {
+    if (wordsLoading) return;
+    setCache(cacheKey, { ...(getCache(cacheKey) || {}), words });
+  }, [cacheKey, words, wordsLoading]);
 
   // The card owns which word is on screen; we only keep the day's counters in sync.
   const handleLearn = async (knewIt) => {
