@@ -140,9 +140,10 @@ const LoginPage = () => {
   return (
     <div className="font-['Plus_Jakarta_Sans'] h-dvh w-screen bg-background overflow-hidden">
       {/* StudyBridge Logo — matches TopNav position exactly, teal accent */}
-      <div className="fixed top-0 left-0 z-[200] pointer-events-none flex items-center h-20 px-8">
-        <Link to="/" className="text-2xl font-extrabold tracking-tight text-accent pointer-events-auto">
-          StudyBridge
+      <div className="fixed top-0 left-0 z-[200] pointer-events-none flex items-center h-20 px-6 sm:px-8">
+        <Link to="/" className="flex items-center gap-2.5 text-2xl font-extrabold tracking-tight text-accent pointer-events-auto">
+          <img src="/logo-192.png" alt="StudyBridge" className="h-9 w-9 rounded-xl object-contain shadow-xs" />
+          <span>StudyBridge</span>
         </Link>
       </div>
 

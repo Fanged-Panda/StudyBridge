@@ -165,14 +165,10 @@ const TopNav = () => {
           { to: '/community', label: 'Community' },
           { to: '/chatbot', label: 'Chatbot' },
         ]
-      : [          { to: '/', label: 'Home' },
+      : [
+          { to: '/', label: 'Home' },
           { to: '/universities', label: 'Explore', matches: EXPLORE_PATHS },
-          ...(isLoggedIn
-            ? [
-                { to: '/profile', label: 'Profile' },
-                { to: '/wordlab', label: 'WordLab' },
-              ]
-            : []),
+          ...(isLoggedIn ? [{ to: '/wordlab', label: 'WordLab' }] : []),
           { to: '/community', label: 'Community' },
           { to: '/chatbot', label: 'Chatbot' },
         ];
@@ -186,8 +182,9 @@ const TopNav = () => {
       <div className="mx-auto flex w-full max-w-[1200px] items-center justify-between px-8">
         {/* Logo */}
         <div className="flex flex-1 items-center">
-          <Link to="/" className="text-2xl font-extrabold tracking-tight text-primary">
-            StudyBridge
+          <Link to="/" className="flex items-center gap-2.5 text-2xl font-extrabold tracking-tight text-primary">
+            <img src="/logo-192.png" alt="StudyBridge" className="h-8 w-8 rounded-lg object-contain shadow-xs" />
+            <span>StudyBridge</span>
           </Link>
         </div>
 

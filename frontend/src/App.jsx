@@ -14,7 +14,9 @@ import { ChatbotPage } from './features/ai';
 
 import AdminDashboard from './pages/admin/AdminDashboard';
 
-const NAV_ORDER = ['/', '/universities', '/professors', '/profile', '/scholarships', '/wordlab', '/community', '/chatbot', '/admin'];
+// Profile sits after the last top-nav link so it always enters from the right
+// and, when leaving it, exits to the right.
+const NAV_ORDER = ['/', '/universities', '/professors', '/scholarships', '/wordlab', '/community', '/chatbot', '/admin', '/profile'];
 
 const getNavIndex = (pathname) => {
   const legacyWordLab =

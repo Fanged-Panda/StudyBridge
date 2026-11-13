@@ -5,7 +5,7 @@ import api from '../../services/api';
 import { getCache, setCache } from '../../services/pageCache';
 import { initialUniversities, initialScholarships } from '../../data/initialData';
 
-const words = ['University', 'Scholarship', 'Exam', 'Country'];
+const words = ['University', 'Scholarship', 'Professor', 'Country'];
 
 const formatCount = (n) => `${(Math.floor(n / 10) * 10).toLocaleString()}+`;
 
@@ -78,7 +78,7 @@ const TypewriterHero = () => {
     return () => window.clearTimeout(timeout);
   }, [displayText, isDeleting, wordIndex]);
 
-  // Fetch search results from both universities and scholarships
+  // Fetch search results from universities, scholarships and professors
   const fetchResults = useCallback((searchQuery) => {
     const q = searchQuery.trim().toLowerCase();
     if (!q) {
@@ -90,7 +90,8 @@ const TypewriterHero = () => {
     Promise.all([
       api.get('/universities', { params: { search: searchQuery, limit: 5 } }).catch(() => null),
       api.get('/scholarships', { params: { search: searchQuery, limit: 5 } }).catch(() => null),
-    ]).then(([uniRes, schRes]) => {
+      api.get('/professors', { params: { search: searchQuery, limit: 5 } }).catch(() => null),
+    ]).then(([uniRes, schRes, profRes]) => {
       let unis = uniRes?.data?.data;
       if (!Array.isArray(unis) || unis.length === 0) {
         unis = initialUniversities.filter(
@@ -107,6 +108,8 @@ const TypewriterHero = () => {
         ).slice(0, 5);
       }
 
+      const profs = Array.isArray(profRes?.data?.data?.items) ? profRes.data.data.items : [];
+
       const uniResults = unis.map((u) => ({
         id: u.id,
         name: u.name,
@@ -121,9 +124,16 @@ const TypewriterHero = () => {
         link: `/scholarships?search=${encodeURIComponent(s.name)}`,
         state: { scholarshipId: s.id, search: s.name },
       }));
+      const profResults = profs.map((p) => ({
+        id: p.id,
+        name: p.name,
+        category: 'Professor',
+        link: `/professors?search=${encodeURIComponent(p.name)}`,
+        state: { search: p.name },
+      }));
 
       // Sort so prefix matches on item name rank highest
-      const combined = [...uniResults, ...schResults].sort((a, b) => {
+      const combined = [...uniResults, ...schResults, ...profResults].sort((a, b) => {
         const aStarts = a.name.toLowerCase().startsWith(q);
         const bStarts = b.name.toLowerCase().startsWith(q);
         if (aStarts && !bStarts) return -1;
@@ -158,6 +168,8 @@ const TypewriterHero = () => {
       const topResult = results[0];
       if (topResult && topResult.category === 'Scholarship') {
         navigate(`/scholarships?search=${encodeURIComponent(trimmed)}`, { state: { search: trimmed } });
+      } else if (topResult && topResult.category === 'Professor') {
+        navigate(`/professors?search=${encodeURIComponent(trimmed)}`, { state: { search: trimmed } });
       } else {
         navigate(`/universities?search=${encodeURIComponent(trimmed)}`, { state: { search: trimmed } });
       }
@@ -223,7 +235,7 @@ const TypewriterHero = () => {
               <input
                 type="text"
                 className="w-full border-none bg-transparent py-3 text-sm placeholder:text-text-muted focus:outline-none focus:ring-0 md:py-4 md:text-base"
-                placeholder="Search universities, scholarships, or exams..."
+                placeholder="Search universities, scholarships, or professors..."
                 value={query}
                 onChange={handleQueryChange}
                 onKeyDown={handleKeyDown}
@@ -265,7 +277,9 @@ const TypewriterHero = () => {
                       className={`ml-3 shrink-0 rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
                         r.category === 'University'
                           ? 'bg-blue-50 text-blue-600'
-                          : 'bg-emerald-50 text-emerald-600'
+                          : r.category === 'Professor'
+                            ? 'bg-violet-50 text-violet-600'
+                            : 'bg-emerald-50 text-emerald-600'
                       }`}
                     >
                       {r.category}

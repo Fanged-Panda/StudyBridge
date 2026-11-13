@@ -1,4 +1,4 @@
-const CACHE_NAME = 'studybridge-v2';
+const CACHE_NAME = 'studybridge-v4';
 const PRECACHE_URLS = ['/', '/index.html'];
 
 self.addEventListener('install', (event) => {
@@ -18,6 +18,16 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
+
+  // Never serve Vite's dev modules from the cache; otherwise code changes
+  // (and HMR) stay hidden behind an old cached copy after a reload.
+  const requestUrl = new URL(event.request.url);
+  if (
+    requestUrl.origin === self.location.origin &&
+    /^\/(src|@vite|@react-refresh|node_modules\/\.vite)\//.test(requestUrl.pathname)
+  ) {
+    return;
+  }
 
   // Handle SPA HTML page navigation (e.g. refreshing /chatbot, /universities, /profile)
   if (event.request.mode === 'navigate') {

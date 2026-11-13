@@ -1,6 +1,6 @@
 import prisma from '../../config/database.js';
 
-const DEFAULT_PAGE_SIZE = 12;
+const DEFAULT_PAGE_SIZE = 100;
 
 function toPublicProfessor(row) {
   return {
@@ -18,7 +18,7 @@ function toPublicProfessor(row) {
 }
 
 export async function listProfessors({ search, university, universityId, field, page, limit } = {}) {
-  const safeLimit = Math.min(Math.max(Number(limit) || DEFAULT_PAGE_SIZE, 1), 60);
+  const safeLimit = Math.min(Math.max(Number(limit) || DEFAULT_PAGE_SIZE, 1), 500);
   const safePage = Math.max(Number(page) || 1, 1);
   const term = String(search ?? '').trim().slice(0, 80);
   const fieldTerm = String(field ?? '').trim().slice(0, 80);

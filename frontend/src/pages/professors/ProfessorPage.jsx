@@ -5,10 +5,10 @@ import ProfessorCard from '../../features/professors/ProfessorCard';
 import { professorsApi } from '../../services/api';
 import { getCache, setCache } from '../../services/pageCache';
 
-const PAGE_SIZE = 12;
+const LIMIT = 100;
 const FIELDS_CACHE_KEY = 'professors:fields';
 
-const listCacheKey = (search, field, page) => `professors:list:${search}|${field}|${page}`;
+const listCacheKey = (search, field) => `professors:list:${search}|${field}`;
 
 const ProfessorSkeleton = () => (
   <div className="animate-pulse rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -35,14 +35,12 @@ const ProfessorPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const initialSearch = searchParams.get('search') || '';
   const initialField = searchParams.get('field') || '';
-  const cachedList = getCache(listCacheKey(initialSearch, initialField, 1));
+  const cachedList = getCache(listCacheKey(initialSearch, initialField));
 
   const [searchInput, setSearchInput] = useState(initialSearch);
   const [search, setSearch] = useState(initialSearch);
   const [field, setField] = useState(initialField);
-  const [page, setPage] = useState(1);
   const [items, setItems] = useState(cachedList?.items ?? []);
-  const [pagination, setPagination] = useState(cachedList?.pagination ?? { page: 1, total: 0, totalPages: 1 });
   const [fields, setFields] = useState(getCache(FIELDS_CACHE_KEY) ?? []);
   const [loading, setLoading] = useState(!cachedList);
   const [error, setError] = useState('');
@@ -51,18 +49,16 @@ const ProfessorPage = () => {
   useEffect(() => {
     const timer = window.setTimeout(() => {
       setSearch(searchInput.trim());
-      setPage(1);
     }, 320);
     return () => window.clearTimeout(timer);
   }, [searchInput]);
 
   const load = useCallback(async () => {
-    const key = listCacheKey(search, field, page);
+    const key = listCacheKey(search, field);
     const cached = getCache(key);
 
     if (cached) {
       setItems(cached.items);
-      setPagination(cached.pagination);
       setError('');
       setLoading(false);
       return;
@@ -74,21 +70,18 @@ const ProfessorPage = () => {
       const data = await professorsApi.list({
         search: search || undefined,
         field: field || undefined,
-        page,
-        limit: PAGE_SIZE,
+        limit: LIMIT,
       });
       setItems(data.items || []);
-      setPagination(data.pagination || { page: 1, total: 0, totalPages: 1 });
       setCache(key, {
         items: data.items || [],
-        pagination: data.pagination || { page: 1, total: 0, totalPages: 1 },
       });
     } catch (err) {
       setError(err?.response?.data?.message || 'The faculty directory could not be loaded. Please try again.');
     } finally {
       setLoading(false);
     }
-  }, [search, field, page]);
+  }, [search, field]);
 
   useEffect(() => {
     load();
@@ -124,7 +117,6 @@ const ProfessorPage = () => {
     setSearchInput('');
     setSearch('');
     setField('');
-    setPage(1);
   };
 
   const filtersActive = Boolean(search || field);
@@ -150,7 +142,7 @@ const ProfessorPage = () => {
 
           <div className="flex shrink-0 items-center gap-2 rounded-2xl border border-slate-100 bg-slate-50 px-3.5 py-2 text-xs text-slate-500">
             <Users size={15} className="text-brand" />
-            <span>{pagination.total} faculty profiles</span>
+            <span>{items.length} faculty profiles</span>
           </div>
         </div>
 
@@ -194,10 +186,7 @@ const ProfessorPage = () => {
           <span className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">Fields</span>
           <button
             type="button"
-            onClick={() => {
-              setField('');
-              setPage(1);
-            }}
+            onClick={() => setField('')}
             aria-pressed={!field}
             className={`rounded-full px-3.5 py-1.5 text-xs font-bold transition ${
               !field
@@ -213,10 +202,7 @@ const ProfessorPage = () => {
               <button
                 key={entry.name}
                 type="button"
-                onClick={() => {
-                  setField(active ? '' : entry.name);
-                  setPage(1);
-                }}
+                onClick={() => setField(active ? '' : entry.name)}
                 aria-pressed={active}
                 className={`rounded-full px-3.5 py-1.5 text-xs font-bold transition ${
                   active
@@ -234,10 +220,23 @@ const ProfessorPage = () => {
 
       <div className="flex flex-wrap items-center justify-between gap-2 px-1">
         <p className="text-xs font-semibold text-slate-500" aria-live="polite">
-          {loading
-            ? 'Loading faculty…'
-            : `${pagination.total} ${pagination.total === 1 ? 'professor' : 'professors'}${field ? ` in ${field}` : ''}`}
+          {loading ? (
+            'Loading faculty…'
+          ) : (
+            <>
+              Showing <strong className="font-bold text-slate-900">{items.length}</strong> {items.length === 1 ? 'professor' : 'professors'}{field ? ` in ${field}` : ''}
+            </>
+          )}
         </p>
+        {filtersActive && (
+          <button
+            type="button"
+            onClick={resetFilters}
+            className="inline-flex items-center gap-1 text-xs font-semibold text-brand hover:underline"
+          >
+            <RefreshCw className="h-3 w-3" /> Clear all filters
+          </button>
+        )}
       </div>
 
       {loading ? (
@@ -275,37 +274,11 @@ const ProfessorPage = () => {
           </button>
         </div>
       ) : (
-        <>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {items.map((professor) => (
-              <ProfessorCard key={professor.id} professor={professor} onOpenUniversity={openUniversity} />
-            ))}
-          </div>
-
-          {pagination.totalPages > 1 && (
-            <nav className="flex items-center justify-center gap-2 pt-2" aria-label="Professor pagination">
-              <button
-                type="button"
-                onClick={() => setPage((current) => Math.max(1, current - 1))}
-                disabled={pagination.page <= 1}
-                className="rounded-full border border-slate-200 bg-white px-3.5 py-2 text-sm font-semibold text-slate-600 transition hover:border-accent hover:text-primary disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                Previous
-              </button>
-              <span className="text-xs font-semibold text-slate-500">
-                Page {pagination.page} of {pagination.totalPages}
-              </span>
-              <button
-                type="button"
-                onClick={() => setPage((current) => Math.min(pagination.totalPages, current + 1))}
-                disabled={pagination.page >= pagination.totalPages}
-                className="rounded-full border border-slate-200 bg-white px-3.5 py-2 text-sm font-semibold text-slate-600 transition hover:border-accent hover:text-primary disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                Next
-              </button>
-            </nav>
-          )}
-        </>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {items.map((professor) => (
+            <ProfessorCard key={professor.id} professor={professor} onOpenUniversity={openUniversity} />
+          ))}
+        </div>
       )}
 
       {loading && (

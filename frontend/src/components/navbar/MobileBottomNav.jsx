@@ -6,7 +6,6 @@ const EXPLORE_PATHS = ['/universities', '/scholarships', '/professors'];
 const items = [
   { to: '/', label: 'Home', icon: 'home' },
   { to: '/universities', label: 'Explore', icon: 'explore', matches: EXPLORE_PATHS },
-  { to: '/profile', label: 'Profile', icon: 'person' },
   { to: '/wordlab', label: 'WordLab', icon: 'menu_book' },
   { to: '/community', label: 'Community', icon: 'groups' },
   { to: '/chatbot', label: 'Chatbot', icon: 'smart_toy' },
@@ -33,9 +32,8 @@ const MobileBottomNav = () => {
     return false;
   };
 
-  const visibleItems = items.filter(
-    (item) => isLoggedIn || (item.to !== '/profile' && item.to !== '/wordlab')
-  );
+  // Profile is reachable from the avatar in the top bar, not this nav.
+  const visibleItems = items.filter((item) => isLoggedIn || item.to !== '/wordlab');
 
   return (
     <nav className="fixed inset-x-3 bottom-4 z-50 sm:inset-x-6 sm:bottom-6 md:hidden" aria-label="Primary">
