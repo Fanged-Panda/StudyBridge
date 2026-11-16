@@ -16,12 +16,12 @@ export const getAvailableSubjects = async (req, res) => {
 };
 
 export const syncUniversity = async (req, res) => {
-  const result = await universitiesService.syncUniversity(req.params.id);
+  const result = await universitiesService.syncUniversity(req.params.id, req.user?.id);
   return res.status(result.status).json(result.body);
 };
 
 export const syncAllUniversities = async (req, res) => {
-  const result = await universitiesService.syncAllUniversities();
+  const result = await universitiesService.syncAllUniversities(req.user?.id);
   return res.status(result.status).json(result.body);
 };
 

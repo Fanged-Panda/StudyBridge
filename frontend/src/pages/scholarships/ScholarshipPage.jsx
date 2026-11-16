@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { useSearchParams, useNavigate, useLocation } from 'react-router-dom';
 import api from '../../services/api';
 import {
@@ -8,9 +9,14 @@ import {
 } from '../../features/scholarships';
 import { Search, RotateCcw, BadgeCheck, X, Award } from 'lucide-react';
 import Button from '../../components/ui/Button';
+import Card from '../../components/ui/Card';
+import Pagination from '../../components/ui/Pagination';
 import { initialScholarships } from '../../data/initialData';
 import { startFitCheck } from '../../features/ai';
-import { getCache, setCache } from '../../services/pageCache';
+import { clearCache, getCache, setCache } from '../../services/pageCache';
+
+const PAGE_SIZE = 9;
+const FETCH_LIMIT = 500;
 
 const DEFAULT_COUNTRIES = [
   'All',
@@ -28,6 +34,15 @@ const DEFAULT_COUNTRIES = [
 const scholarshipListCacheKey = (params = {}) =>
   ['sch:list', params.limit || 100, params.sort || 'amount', params.search || '', params.country || '', params.fundingLevel || ''].join('|');
 
+const readIsAdmin = () => {
+  try {
+    const user = JSON.parse(localStorage.getItem('userProfile') || '{}');
+    return user.role === 'admin' || user.email === 'admin@studybridge.com';
+  } catch {
+    return false;
+  }
+};
+
 const ScholarshipPage = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -37,9 +52,15 @@ const ScholarshipPage = () => {
 
   // Instant initial data: last cached results, otherwise the seed set.
   const [scholarships, setScholarships] = useState(
-    () => getCache(scholarshipListCacheKey({ search: initialSearch.trim() })) || initialScholarships
+    () => getCache(scholarshipListCacheKey({ limit: FETCH_LIMIT, search: initialSearch.trim() })) || initialScholarships
   );
   const [availableCountries, setAvailableCountries] = useState(() => getCache('sch:countries') || DEFAULT_COUNTRIES);
+  const [isAdmin, setIsAdmin] = useState(readIsAdmin);
+  const [editingSch, setEditingSch] = useState(null);
+  const [savingSch, setSavingSch] = useState(false);
+  const [syncingSchId, setSyncingSchId] = useState(null);
+  const [deletingSchId, setDeletingSchId] = useState(null);
+  const [adminFeedback, setAdminFeedback] = useState(null);
 
   // Search state
   const [searchQuery, setSearchQuery] = useState(initialSearch);
@@ -48,9 +69,16 @@ const ScholarshipPage = () => {
   const [appliedCountry, setAppliedCountry] = useState('All');
   const [appliedFunding, setAppliedFunding] = useState('All');
   const [appliedSort, setAppliedSort] = useState('amount');
+  const [page, setPage] = useState(1);
 
   // Modal state
   const [activeModalScholarship, setActiveModalScholarship] = useState(null);
+
+  useEffect(() => {
+    const syncAdmin = () => setIsAdmin(readIsAdmin());
+    window.addEventListener('authchange', syncAdmin);
+    return () => window.removeEventListener('authchange', syncAdmin);
+  }, []);
 
   // Sync search param if updated from URL or location state
   useEffect(() => {
@@ -99,7 +127,7 @@ const ScholarshipPage = () => {
   const loadScholarships = useCallback(async () => {
     try {
       const params = {
-        limit: 100,
+        limit: FETCH_LIMIT,
         sort: appliedSort,
       };
 
@@ -160,6 +188,25 @@ const ScholarshipPage = () => {
     return list;
   }, [scholarships, searchQuery, appliedCountry, appliedFunding, appliedSort]);
 
+  const totalPages = Math.max(1, Math.ceil(displayedScholarships.length / PAGE_SIZE));
+  const paginatedScholarships = useMemo(
+    () => displayedScholarships.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
+    [displayedScholarships, page],
+  );
+
+  useEffect(() => {
+    setPage(1);
+  }, [searchQuery, appliedCountry, appliedFunding, appliedSort]);
+
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [page, totalPages]);
+
+  const goToPage = (nextPage) => {
+    setPage(nextPage);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   const handleApplyFilters = ({ country, funding, sort }) => {
     setAppliedCountry(country);
     setAppliedFunding(funding);
@@ -184,6 +231,82 @@ const ScholarshipPage = () => {
       }
     } catch (e) {
       // Keep rich modal data
+    }
+  };
+
+  const handleAdminSyncScholarship = async (scholarship) => {
+    if (!scholarship?.id) return;
+    setSyncingSchId(scholarship.id);
+    setAdminFeedback(null);
+    try {
+      const res = await api.post(`/admin/sync/scholarships/${scholarship.id}`, null, { timeout: 180000 });
+      setAdminFeedback({ type: 'success', message: res.data?.message || `Synced ${scholarship.name}.` });
+      clearCache('sch:');
+      clearCache('admin:');
+      await loadScholarships();
+    } catch (err) {
+      setAdminFeedback({
+        type: 'error',
+        message: err.response?.data?.message || 'Could not sync this scholarship.',
+      });
+    } finally {
+      setSyncingSchId(null);
+    }
+  };
+
+  const handleAdminDeleteScholarship = async (scholarship) => {
+    if (!scholarship?.id) return;
+    if (!window.confirm(`Delete ${scholarship.name}?`)) return;
+    setDeletingSchId(scholarship.id);
+    setAdminFeedback(null);
+    try {
+      const res = await api.delete(`/admin/scholarships/${scholarship.id}`);
+      setScholarships((prev) => prev.filter((item) => item.id !== scholarship.id));
+      setActiveModalScholarship((current) => (current?.id === scholarship.id ? null : current));
+      setAdminFeedback({ type: 'success', message: res.data?.message || `Deleted ${scholarship.name}.` });
+      clearCache('sch:');
+      clearCache('admin:');
+    } catch (err) {
+      setAdminFeedback({
+        type: 'error',
+        message: err.response?.data?.message || 'Could not delete this scholarship.',
+      });
+    } finally {
+      setDeletingSchId(null);
+    }
+  };
+
+  const handleSaveAdminScholarship = async (event) => {
+    event.preventDefault();
+    if (!editingSch?.id) return;
+    setSavingSch(true);
+    setAdminFeedback(null);
+    try {
+      const res = await api.put(`/admin/scholarships/${editingSch.id}`, {
+        name: editingSch.name,
+        country: editingSch.country,
+        amountUsd: editingSch.amountUsd,
+        fundingLevel: editingSch.fundingLevel,
+        eligibility: editingSch.eligibility,
+        deadline: editingSch.deadline,
+        websiteUrl: editingSch.websiteUrl,
+        notifyFollowers: false,
+      });
+      const updated = res.data?.data;
+      if (updated) {
+        setScholarships((prev) => prev.map((item) => (item.id === updated.id ? { ...item, ...updated } : item)));
+      }
+      setAdminFeedback({ type: 'success', message: res.data?.message || 'Scholarship updated.' });
+      setEditingSch(null);
+      clearCache('sch:');
+      clearCache('admin:');
+    } catch (err) {
+      setAdminFeedback({
+        type: 'error',
+        message: err.response?.data?.message || 'Could not update this scholarship.',
+      });
+    } finally {
+      setSavingSch(false);
     }
   };
 
@@ -243,6 +366,18 @@ const ScholarshipPage = () => {
         </div>
       </div>
 
+      {adminFeedback && (
+        <div
+          className={`rounded-2xl border p-3.5 text-xs font-semibold ${
+            adminFeedback.type === 'success'
+              ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+              : 'border-red-200 bg-red-50 text-red-700'
+          }`}
+        >
+          {adminFeedback.message}
+        </div>
+      )}
+
       {/* Top Filter Bar with Apply Button (Directly below search bar) */}
       <ScholarshipFilterBar
         countries={availableCountries.filter((c) => c !== 'All')}
@@ -281,16 +416,25 @@ const ScholarshipPage = () => {
           </Button>
         </div>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {displayedScholarships.map((scholarship) => (
-            <ScholarshipCard
-              key={scholarship.id || scholarship.name}
-              scholarship={scholarship}
-              onSelect={handleOpenDetails}
-              onCheckFit={(item) => startFitCheck(navigate, 'scholarship', item)}
-            />
-          ))}
-        </div>
+        <>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {paginatedScholarships.map((scholarship) => (
+              <ScholarshipCard
+                key={scholarship.id || scholarship.name}
+                scholarship={scholarship}
+                onSelect={handleOpenDetails}
+                isAdmin={isAdmin}
+                onEditClick={(item) => setEditingSch({ ...item })}
+                onSyncClick={handleAdminSyncScholarship}
+                onDeleteClick={handleAdminDeleteScholarship}
+                syncing={syncingSchId === scholarship.id}
+                deleting={deletingSchId === scholarship.id}
+                onCheckFit={(item) => startFitCheck(navigate, 'scholarship', item)}
+              />
+            ))}
+          </div>
+          <Pagination page={page} totalPages={totalPages} onChange={goToPage} />
+        </>
       )}
 
       {/* Refined Scholarship Detail Modal */}
@@ -304,6 +448,75 @@ const ScholarshipPage = () => {
           }}
         />
       )}
+
+      {editingSch &&
+        createPortal(
+          <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm">
+            <div className="fixed inset-0" onClick={() => setEditingSch(null)} aria-hidden="true" />
+            <Card className="relative z-10 max-h-[90vh] w-full max-w-2xl space-y-5 overflow-y-auto rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl md:p-8">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+                <div>
+                  <span className="text-xs font-bold uppercase tracking-wider text-accent">Administrator Edit</span>
+                  <h2 className="text-xl font-extrabold text-primary">{editingSch.name}</h2>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setEditingSch(null)}
+                  className="rounded-full p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+                  aria-label="Close scholarship editor"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              <form onSubmit={handleSaveAdminScholarship} className="space-y-4">
+                {[
+                  ['name', 'Program Name', 'text'],
+                  ['country', 'Host Country', 'text'],
+                  ['amountUsd', 'Award Value (USD)', 'number'],
+                  ['fundingLevel', 'Funding Level', 'text'],
+                  ['deadline', 'Deadline', 'text'],
+                  ['websiteUrl', 'Official URL', 'url'],
+                ].map(([key, label, type]) => (
+                  <div key={key}>
+                    <label className="mb-1 block text-xs font-bold text-slate-700">{label}</label>
+                    <input
+                      type={type}
+                      value={editingSch[key] ?? ''}
+                      onChange={(event) =>
+                        setEditingSch({
+                          ...editingSch,
+                          [key]: type === 'number' && event.target.value !== '' ? Number(event.target.value) : event.target.value,
+                        })
+                      }
+                      className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-sm font-medium text-primary focus:border-brand focus:outline-none"
+                    />
+                  </div>
+                ))}
+
+                <div>
+                  <label className="mb-1 block text-xs font-bold text-slate-700">Eligibility</label>
+                  <textarea
+                    rows={3}
+                    value={editingSch.eligibility || ''}
+                    onChange={(event) => setEditingSch({ ...editingSch, eligibility: event.target.value })}
+                    className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-sm text-primary focus:border-brand focus:outline-none"
+                  />
+                </div>
+
+                <div className="flex items-center justify-end gap-3 border-t border-slate-100 pt-4">
+                  <Button variant="outline" onClick={() => setEditingSch(null)}>
+                    Cancel
+                  </Button>
+                  <Button type="submit" variant="primary" disabled={savingSch}>
+                    {savingSch ? 'Saving…' : 'Save changes'}
+                  </Button>
+                </div>
+              </form>
+            </Card>
+          </div>,
+          document.body,
+        )}
     </section>
   );
 };

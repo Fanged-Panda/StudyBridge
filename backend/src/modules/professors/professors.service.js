@@ -13,15 +13,20 @@ function toPublicProfessor(row) {
     email: row.email || null,
     profileUrl: row.profileUrl || null,
     photoUrl: row.photoUrl || null,
+    worksCount: row.worksCount ?? null,
+    citedByCount: row.citedByCount ?? null,
+    hIndex: row.hIndex ?? null,
+    topics: row.topics || [],
     university: row.university ? { id: row.university.id, name: row.university.name, country: row.university.country } : null,
   };
 }
 
-export async function listProfessors({ search, university, universityId, field, page, limit } = {}) {
+export async function listProfessors({ search, university, universityId, field, department, page, limit } = {}) {
   const safeLimit = Math.min(Math.max(Number(limit) || DEFAULT_PAGE_SIZE, 1), 500);
   const safePage = Math.max(Number(page) || 1, 1);
   const term = String(search ?? '').trim().slice(0, 80);
   const fieldTerm = String(field ?? '').trim().slice(0, 80);
+  const departmentTerm = String(department ?? '').trim().slice(0, 80);
 
   const where = {};
   if (universityId) where.universityId = String(universityId);
@@ -29,6 +34,7 @@ export async function listProfessors({ search, university, universityId, field, 
     where.university = { name: { equals: String(university), mode: 'insensitive' } };
   }
   if (fieldTerm) where.field = { contains: fieldTerm, mode: 'insensitive' };
+  if (departmentTerm) where.department = { contains: departmentTerm, mode: 'insensitive' };
   if (term) {
     where.OR = [
       { name: { contains: term, mode: 'insensitive' } },
@@ -67,6 +73,24 @@ export async function listFields() {
 
   for (const row of rows) {
     for (const piece of String(row.field || '').split(',')) {
+      const name = piece.trim();
+      if (!name) continue;
+      counts.set(name, (counts.get(name) || 0) + 1);
+    }
+  }
+
+  return [...counts.entries()]
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+}
+
+/** Distinct departments with counts, used to build the department chips. */
+export async function listDepartments() {
+  const rows = await prisma.professor.findMany({ select: { department: true } });
+  const counts = new Map();
+
+  for (const row of rows) {
+    for (const piece of String(row.department || '').split(',')) {
       const name = piece.trim();
       if (!name) continue;
       counts.set(name, (counts.get(name) || 0) + 1);

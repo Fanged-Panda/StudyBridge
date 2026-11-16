@@ -2,13 +2,26 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { GraduationCap, Loader2, RefreshCw, Search, Users, X } from 'lucide-react';
 import ProfessorCard from '../../features/professors/ProfessorCard';
-import { professorsApi } from '../../services/api';
-import { getCache, setCache } from '../../services/pageCache';
+import ProfessorDetailModal from '../../features/professors/ProfessorDetailModal';
+import Pagination from '../../components/ui/Pagination';
+import api, { professorsApi } from '../../services/api';
+import { clearCache, getCache, setCache } from '../../services/pageCache';
 
-const LIMIT = 100;
+const LIMIT = 500;
+const PAGE_SIZE = 9;
 const FIELDS_CACHE_KEY = 'professors:fields';
+const DEPARTMENTS_CACHE_KEY = 'professors:departments';
 
-const listCacheKey = (search, field) => `professors:list:${search}|${field}`;
+const listCacheKey = (search, field, department) => `professors:list:${search}|${field}|${department}`;
+
+const readIsAdmin = () => {
+  try {
+    const user = JSON.parse(localStorage.getItem('userProfile') || '{}');
+    return user.role === 'admin' || user.email === 'admin@studybridge.com';
+  } catch {
+    return false;
+  }
+};
 
 const ProfessorSkeleton = () => (
   <div className="animate-pulse rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -30,20 +43,98 @@ const ProfessorSkeleton = () => (
   </div>
 );
 
+const FilterChipRow = ({ label, entries = [], value, onChange, expanded, onToggle, limit = 10 }) => {
+  const activeEntry = value
+    ? entries.find((entry) => entry.name.toLowerCase() === value.toLowerCase())
+    : null;
+  const ordered = activeEntry
+    ? [activeEntry, ...entries.filter((entry) => entry.name !== activeEntry.name)]
+    : entries;
+  const visible = expanded ? ordered : ordered.slice(0, limit);
+  const hasMore = ordered.length > limit;
+
+  return (
+    <div className="mt-4">
+      <div className="flex items-center gap-2">
+        <span className="shrink-0 text-xs font-bold uppercase tracking-[0.16em] text-slate-400">{label}</span>
+        <div className={`flex min-w-0 flex-1 items-center gap-2 ${expanded ? 'flex-wrap' : 'flex-nowrap overflow-hidden'}`}>
+          <button
+            type="button"
+            onClick={() => onChange('')}
+            aria-pressed={!value}
+            className={`shrink-0 rounded-full px-3.5 py-1.5 text-xs font-bold transition ${
+              !value
+                ? 'bg-primary text-white'
+                : 'border border-slate-200 bg-white text-slate-600 hover:border-accent hover:text-primary'
+            }`}
+          >
+            All
+          </button>
+          {visible.map((entry) => {
+            const active = value.toLowerCase() === entry.name.toLowerCase();
+            return (
+              <button
+                key={entry.name}
+                type="button"
+                onClick={() => onChange(active ? '' : entry.name)}
+                aria-pressed={active}
+                className={`shrink-0 rounded-full px-3.5 py-1.5 text-xs font-bold transition ${
+                  active
+                    ? 'bg-accent text-white'
+                    : 'border border-slate-200 bg-white text-slate-600 hover:border-accent hover:text-primary'
+                }`}
+              >
+                {entry.name}
+                <span className={`ml-1.5 text-[10px] ${active ? 'text-white/80' : 'text-slate-400'}`}>{entry.count}</span>
+              </button>
+            );
+          })}
+        </div>
+        {hasMore && (
+          <button
+            type="button"
+            onClick={onToggle}
+            aria-label={expanded ? `Show fewer ${label.toLowerCase()}` : `Show all ${label.toLowerCase()}`}
+            className="shrink-0 rounded-full border border-slate-200 px-2.5 py-1.5 text-xs font-bold text-slate-600 transition hover:border-accent hover:text-primary"
+          >
+            {expanded ? 'Less' : '...'}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+};
+
 const ProfessorPage = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const initialSearch = searchParams.get('search') || '';
   const initialField = searchParams.get('field') || '';
-  const cachedList = getCache(listCacheKey(initialSearch, initialField));
+  const initialDepartment = searchParams.get('department') || '';
+  const cachedList = getCache(listCacheKey(initialSearch, initialField, initialDepartment));
 
   const [searchInput, setSearchInput] = useState(initialSearch);
   const [search, setSearch] = useState(initialSearch);
   const [field, setField] = useState(initialField);
+  const [department, setDepartment] = useState(initialDepartment);
   const [items, setItems] = useState(cachedList?.items ?? []);
   const [fields, setFields] = useState(getCache(FIELDS_CACHE_KEY) ?? []);
+  const [departments, setDepartments] = useState(getCache(DEPARTMENTS_CACHE_KEY) ?? []);
   const [loading, setLoading] = useState(!cachedList);
   const [error, setError] = useState('');
+  const [feedback, setFeedback] = useState(null);
+  const [page, setPage] = useState(1);
+  const [activeProfessor, setActiveProfessor] = useState(null);
+  const [isAdmin, setIsAdmin] = useState(readIsAdmin);
+  const [deletingId, setDeletingId] = useState(null);
+  const [showAllFields, setShowAllFields] = useState(false);
+  const [showAllDepartments, setShowAllDepartments] = useState(false);
+
+  useEffect(() => {
+    const syncAdmin = () => setIsAdmin(readIsAdmin());
+    window.addEventListener('authchange', syncAdmin);
+    return () => window.removeEventListener('authchange', syncAdmin);
+  }, []);
 
   // Debounce typing so the directory does not refetch on every keystroke.
   useEffect(() => {
@@ -54,7 +145,7 @@ const ProfessorPage = () => {
   }, [searchInput]);
 
   const load = useCallback(async () => {
-    const key = listCacheKey(search, field);
+    const key = listCacheKey(search, field, department);
     const cached = getCache(key);
 
     if (cached) {
@@ -70,6 +161,7 @@ const ProfessorPage = () => {
       const data = await professorsApi.list({
         search: search || undefined,
         field: field || undefined,
+        department: department || undefined,
         limit: LIMIT,
       });
       setItems(data.items || []);
@@ -81,23 +173,37 @@ const ProfessorPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [search, field]);
+  }, [search, field, department]);
 
   useEffect(() => {
     load();
   }, [load]);
 
   useEffect(() => {
-    if (getCache(FIELDS_CACHE_KEY)) return undefined;
-    professorsApi
-      .fields()
-      .then((data) => {
-        const list = Array.isArray(data) ? data : [];
-        setFields(list);
-        setCache(FIELDS_CACHE_KEY, list);
-      })
-      .catch(() => setFields([]));
-    return undefined;
+    let cancelled = false;
+
+    const loadFields = getCache(FIELDS_CACHE_KEY)
+      ? Promise.resolve()
+      : professorsApi.fields().then((data) => {
+          if (cancelled) return;
+          const list = Array.isArray(data) ? data : [];
+          setFields(list);
+          setCache(FIELDS_CACHE_KEY, list);
+        });
+
+    const loadDepartments = getCache(DEPARTMENTS_CACHE_KEY)
+      ? Promise.resolve()
+      : professorsApi.departments().then((data) => {
+          if (cancelled) return;
+          const list = Array.isArray(data) ? data : [];
+          setDepartments(list);
+          setCache(DEPARTMENTS_CACHE_KEY, list);
+        });
+
+    Promise.allSettled([loadFields, loadDepartments]).catch(() => {});
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // Keep the URL shareable without adding history entries for every keystroke.
@@ -105,8 +211,9 @@ const ProfessorPage = () => {
     const next = new URLSearchParams();
     if (search) next.set('search', search);
     if (field) next.set('field', field);
+    if (department) next.set('department', department);
     setSearchParams(next, { replace: true });
-  }, [search, field, setSearchParams]);
+  }, [search, field, department, setSearchParams]);
 
   const openUniversity = (university) => {
     if (!university?.name) return;
@@ -117,10 +224,51 @@ const ProfessorPage = () => {
     setSearchInput('');
     setSearch('');
     setField('');
+    setDepartment('');
+    setFeedback(null);
   };
 
-  const filtersActive = Boolean(search || field);
-  const visibleFields = useMemo(() => fields.slice(0, 14), [fields]);
+  const handleDelete = async (professor) => {
+    if (!professor?.id) return;
+    if (!window.confirm(`Delete ${professor.name} from the faculty directory?`)) return;
+
+    setDeletingId(professor.id);
+    setFeedback(null);
+    try {
+      const res = await api.delete(`/admin/professors/${professor.id}`);
+      setItems((prev) => prev.filter((item) => item.id !== professor.id));
+      setActiveProfessor((current) => (current?.id === professor.id ? null : current));
+      clearCache('professors:');
+      setFeedback({ type: 'success', message: res.data?.message || 'Professor deleted.' });
+    } catch (err) {
+      setFeedback({
+        type: 'error',
+        message: err.response?.data?.message || 'Could not delete this professor.',
+      });
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const filtersActive = Boolean(search || field || department);
+  const totalPages = Math.max(1, Math.ceil(items.length / PAGE_SIZE));
+  const paginatedItems = useMemo(
+    () => items.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
+    [items, page],
+  );
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, field, department]);
+
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [page, totalPages]);
+
+  const goToPage = (nextPage) => {
+    setPage(nextPage);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   return (
     <section className="space-y-6">
@@ -182,41 +330,36 @@ const ProfessorPage = () => {
           </button>
         </div>
 
-        <div className="mt-4 flex flex-wrap items-center gap-2">
-          <span className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">Fields</span>
-          <button
-            type="button"
-            onClick={() => setField('')}
-            aria-pressed={!field}
-            className={`rounded-full px-3.5 py-1.5 text-xs font-bold transition ${
-              !field
-                ? 'bg-primary text-white'
-                : 'border border-slate-200 bg-white text-slate-600 hover:border-accent hover:text-primary'
-            }`}
-          >
-            All
-          </button>
-          {visibleFields.map((entry) => {
-            const active = field.toLowerCase() === entry.name.toLowerCase();
-            return (
-              <button
-                key={entry.name}
-                type="button"
-                onClick={() => setField(active ? '' : entry.name)}
-                aria-pressed={active}
-                className={`rounded-full px-3.5 py-1.5 text-xs font-bold transition ${
-                  active
-                    ? 'bg-accent text-white'
-                    : 'border border-slate-200 bg-white text-slate-600 hover:border-accent hover:text-primary'
-                }`}
-              >
-                {entry.name}
-                <span className={`ml-1.5 text-[10px] ${active ? 'text-white/80' : 'text-slate-400'}`}>{entry.count}</span>
-              </button>
-            );
-          })}
-        </div>
+        <FilterChipRow
+          label="Fields"
+          entries={fields}
+          value={field}
+          onChange={setField}
+          expanded={showAllFields}
+          onToggle={() => setShowAllFields((value) => !value)}
+        />
+
+        <FilterChipRow
+          label="Departments"
+          entries={departments}
+          value={department}
+          onChange={setDepartment}
+          expanded={showAllDepartments}
+          onToggle={() => setShowAllDepartments((value) => !value)}
+        />
       </div>
+
+      {feedback && (
+        <div
+          className={`rounded-2xl border p-3.5 text-xs font-semibold ${
+            feedback.type === 'success'
+              ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+              : 'border-red-200 bg-red-50 text-red-700'
+          }`}
+        >
+          {feedback.message}
+        </div>
+      )}
 
       <div className="flex flex-wrap items-center justify-between gap-2 px-1">
         <p className="text-xs font-semibold text-slate-500" aria-live="polite">
@@ -224,7 +367,10 @@ const ProfessorPage = () => {
             'Loading faculty…'
           ) : (
             <>
-              Showing <strong className="font-bold text-slate-900">{items.length}</strong> {items.length === 1 ? 'professor' : 'professors'}{field ? ` in ${field}` : ''}
+              Showing <strong className="font-bold text-slate-900">{items.length}</strong>{' '}
+              {items.length === 1 ? 'professor' : 'professors'}
+              {field ? ` in ${field}` : ''}
+              {department ? ` · ${department}` : ''}
             </>
           )}
         </p>
@@ -263,7 +409,7 @@ const ProfessorPage = () => {
           </span>
           <h2 className="mt-4 text-xl font-extrabold text-primary">No professors match that search</h2>
           <p className="mx-auto mt-2 max-w-md text-sm text-slate-500">
-            Try another research field or clear the filters to browse the whole directory.
+            Try another research field or department, or clear the filters to browse the whole directory.
           </p>
           <button
             type="button"
@@ -274,11 +420,26 @@ const ProfessorPage = () => {
           </button>
         </div>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {items.map((professor) => (
-            <ProfessorCard key={professor.id} professor={professor} onOpenUniversity={openUniversity} />
-          ))}
-        </div>
+        <>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {paginatedItems.map((professor) => (
+              <ProfessorCard
+                key={professor.id}
+                professor={professor}
+                onOpenUniversity={openUniversity}
+                onSelect={setActiveProfessor}
+                onDeleteClick={handleDelete}
+                isAdmin={isAdmin}
+                deleting={deletingId === professor.id}
+              />
+            ))}
+          </div>
+          <Pagination page={page} totalPages={totalPages} onChange={goToPage} />
+        </>
+      )}
+
+      {activeProfessor && (
+        <ProfessorDetailModal professor={activeProfessor} onClose={() => setActiveProfessor(null)} />
       )}
 
       {loading && (

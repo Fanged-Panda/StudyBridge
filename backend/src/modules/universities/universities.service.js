@@ -1,4 +1,7 @@
 import prisma from '../../config/database.js';
+import { queueOnDemandRefresh } from '../../services/onDemandSync.js';
+import { runManualSync, syncFailure } from '../../services/syncRunner.js';
+import { SYNC_JOB_TYPES } from '../../services/syncJobs.js';
 
 const parseNumber = (value) => {
   if (value === undefined || value === null || value === '') return undefined;
@@ -299,6 +302,11 @@ export const getUniversityById = async (id) => {
       return { status: 404, body: { success: false, message: 'University not found.' } };
     }
 
+    // Serve the database row first; stale data is refreshed by the cron worker.
+    queueOnDemandRefresh('university', university).catch((error) =>
+      console.warn('[On-demand sync] University queue failed:', error?.message),
+    );
+
     // Lookup matching scholarships for this university's country or global scholarships
     const matchingScholarships = await prisma.scholarship.findMany({
       where: {
@@ -357,8 +365,11 @@ export const getUniversityById = async (id) => {
       eligibilityChecklist,
       scholarships: matchingScholarships,
       syncStatus: {
-        isLiveSynced: true,
+        isLiveSynced: Boolean(university.lastSyncedAt),
         lastScraped: university.lastScraped || university.updatedAt,
+        lastSyncedAt: university.lastSyncedAt,
+        nextSyncAt: university.nextSyncAt,
+        state: university.syncStatus,
         officialSourceVerified: Boolean(university.websiteUrl),
       },
     };
@@ -401,19 +412,20 @@ export const getAvailableSubjects = async () => {
   }
 };
 
-export const syncUniversity = async (id) => {
+export const syncUniversity = async (id, adminId = null) => {
   try {
     const university = await prisma.university.findUnique({ where: { id } });
     if (!university) {
       return { status: 404, body: { success: false, message: 'University not found to sync.' } };
     }
 
-    const updated = await prisma.university.update({
-      where: { id },
-      data: {
-        lastScraped: new Date(),
-      },
+    const outcome = await runManualSync({
+      type: SYNC_JOB_TYPES.UNIVERSITY,
+      adminId,
+      targetType: 'university',
+      targetId: id,
     });
+    const updated = await prisma.university.findUnique({ where: { id } });
 
     // Notify followers about synchronization / update
     try {
@@ -428,7 +440,7 @@ export const syncUniversity = async (id) => {
             userId: f.userId,
             universityId: id,
             title: `Admissions Sync — ${university.name}`,
-            message: `${university.name} has synchronized its live admission requirements and deadlines.`,
+            message: `${university.name} has refreshed its live faculty and admission data from official sources.`,
             type: 'GENERAL_UNIVERSITY_UPDATE',
             isRead: false,
             metadata: {
@@ -447,40 +459,40 @@ export const syncUniversity = async (id) => {
       status: 200,
       body: {
         success: true,
-        message: `Successfully synchronized live data with official portal for ${university.name}`,
+        message: `Successfully ran the synchronized refresh for ${university.name}.`,
         data: {
           id: updated.id,
           name: updated.name,
           lastScraped: updated.lastScraped,
-          status: 'Synced with official admissions index',
+          job: outcome.job,
+          sources: ['openalex', 'gemini-search'],
+          warnings: outcome.result?.error ? [outcome.result.error] : [],
+          status: 'Synced with OpenAlex and a grounded Gemini web search',
         },
       },
     };
   } catch (error) {
     console.error('Sync university error:', error);
-    return { status: 500, body: { success: false, message: 'Failed to synchronize university data.' } };
+    return syncFailure(error, 'Failed to synchronize university data.');
   }
 };
 
-export const syncAllUniversities = async () => {
+export const syncAllUniversities = async (adminId = null) => {
   try {
-    const count = await prisma.university.updateMany({
-      data: {
-        lastScraped: new Date(),
-      },
-    });
+    const outcome = await runManualSync({ type: SYNC_JOB_TYPES.UNIVERSITY_CATALOG, adminId });
 
     return {
       status: 200,
       body: {
         success: true,
-        message: `Successfully synced dynamic data for all ${count.count} universities.`,
+        message: `University discovery job ${outcome.job.status.toLowerCase()}: ${outcome.job.created} new, ${outcome.job.updated} enriched.`,
+        data: { job: outcome.job, result: outcome.result },
         syncedAt: new Date(),
       },
     };
   } catch (error) {
     console.error('Sync all universities error:', error);
-    return { status: 500, body: { success: false, message: 'Failed to sync universities.' } };
+    return syncFailure(error, 'Failed to sync universities.');
   }
 };
 

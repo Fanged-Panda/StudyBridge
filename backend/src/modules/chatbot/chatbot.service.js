@@ -1,5 +1,6 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import prisma from '../../config/database.js';
+import { geminiConfig, isQuotaError, recordChatUsage } from '../../services/geminiQuota.js';
 
 // Lazy-initialized singleton
 let genAIClient;
@@ -204,6 +205,10 @@ export const sendMessage = async (userId, message, history) => {
     return { status: 500, body: { success: false, message: 'AI service is not configured.' } };
   }
 
+  if (!geminiConfig().chatEnabled) {
+    return { status: 503, body: { success: false, message: 'The AI advisor is temporarily unavailable.' } };
+  }
+
   try {
     // --- Load student profile ---
     const student = await prisma.student.findUnique({ where: { id: userId } });
@@ -256,9 +261,11 @@ export const sendMessage = async (userId, message, history) => {
         });
 
         reply = result?.response?.text()?.trim();
+        await recordChatUsage();
         if (reply) break;
       } catch (err) {
         lastError = err;
+        await recordChatUsage({ quotaError: isQuotaError(err) });
         console.warn(`Gemini model ${modelName} failed, trying next fallback:`, err?.message || err);
       }
     }

@@ -6,13 +6,14 @@ import {
   syncScholarship,
   syncAllScholarships,
 } from './scholarships.controller.js';
+import authMiddleware, { requireAdmin } from '../../middleware/auth.middleware.js';
 
 const router = Router();
 
 router.get('/', listScholarships);
 router.get('/countries', getScholarshipCountries);
-router.post('/sync', syncAllScholarships);
+router.post('/sync', authMiddleware, requireAdmin, syncAllScholarships);
 router.get('/:id', getScholarshipById);
-router.post('/:id/sync', syncScholarship);
+router.post('/:id/sync', authMiddleware, requireAdmin, syncScholarship);
 
 export default router;

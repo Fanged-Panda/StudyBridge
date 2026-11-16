@@ -24,7 +24,7 @@ self.addEventListener('fetch', (event) => {
   const requestUrl = new URL(event.request.url);
   if (
     requestUrl.origin === self.location.origin &&
-    /^\/(src|@vite|@react-refresh|node_modules\/\.vite)\//.test(requestUrl.pathname)
+    /^\/(src|@|node_modules)/.test(requestUrl.pathname)
   ) {
     return;
   }

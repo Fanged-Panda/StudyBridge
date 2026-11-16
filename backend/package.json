@@ -10,7 +10,16 @@
     "prisma:generate": "prisma generate",
     "prisma:push": "prisma db push",
     "prisma:migrate": "prisma migrate dev",
-    "prisma:seed": "prisma db seed"
+    "prisma:seed": "prisma db seed",
+    "sync:universities": "node scripts/sync-universities.js",
+    "sync:admissions": "node scripts/sync-admissions.js",
+    "sync:scholarships:check": "node scripts/check-scholarship-sources.js",
+    "sync:scholarships:extract": "node scripts/extract-scholarships.js",
+    "sync:professors": "node scripts/sync-professors.js",
+    "sync:metrics": "node scripts/refresh-research-metrics.js",
+    "sync:deadlines": "node scripts/update-scholarship-deadlines.js",
+    "sync:queue": "node scripts/process-sync-jobs.js",
+    "sync:weekly": "node scripts/weekly-sync.js"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",

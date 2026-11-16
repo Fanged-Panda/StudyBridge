@@ -5,6 +5,7 @@ const router = Router();
 
 router.get('/', controller.list);
 router.get('/fields', controller.fields);
+router.get('/departments', controller.departments);
 router.get('/university/:universityId', controller.byUniversity);
 
 export default router;

@@ -1,4 +1,7 @@
 import prisma from '../../config/database.js';
+import { queueOnDemandRefresh } from '../../services/onDemandSync.js';
+import { runManualSync, syncFailure } from '../../services/syncRunner.js';
+import { SYNC_JOB_TYPES } from '../../services/syncJobs.js';
 
 const parseNumber = (value) => {
   if (value === undefined || value === null || value === '') return undefined;
@@ -233,6 +236,10 @@ export const getScholarshipById = async (id) => {
       return { status: 404, body: { success: false, message: 'Scholarship program not found.' } };
     }
 
+    queueOnDemandRefresh('scholarship', scholarship).catch((error) =>
+      console.warn('[On-demand sync] Scholarship queue failed:', error?.message),
+    );
+
     // Find host/eligible universities in that country or worldwide top universities
     let matchingUniversities = [];
     if (scholarship.country && scholarship.country !== 'Global' && scholarship.country !== 'Europe' && scholarship.country !== 'Asia') {
@@ -263,8 +270,12 @@ export const getScholarshipById = async (id) => {
       applicationSteps,
       eligibleUniversities: matchingUniversities,
       syncStatus: {
-        isLiveSynced: true,
+        isLiveSynced: Boolean(scholarship.lastSyncedAt),
         lastScraped: scholarship.lastScraped || scholarship.updatedAt,
+        lastSyncedAt: scholarship.lastSyncedAt,
+        lastVerifiedAt: scholarship.lastVerifiedAt,
+        nextSyncAt: scholarship.nextSyncAt,
+        state: scholarship.syncStatus,
         officialPortalVerified: Boolean(scholarship.websiteUrl),
       },
     };
@@ -302,57 +313,59 @@ export const getScholarshipCountries = async () => {
   }
 };
 
-export const syncScholarship = async (id) => {
+export const syncScholarship = async (id, adminId = null) => {
   try {
     const scholarship = await prisma.scholarship.findUnique({ where: { id } });
     if (!scholarship) {
       return { status: 404, body: { success: false, message: 'Scholarship not found to sync.' } };
     }
 
-    const updated = await prisma.scholarship.update({
-      where: { id },
-      data: {
-        lastScraped: new Date(),
-      },
+    const outcome = await runManualSync({
+      type: SYNC_JOB_TYPES.SCHOLARSHIP,
+      adminId,
+      targetType: 'scholarship',
+      targetId: id,
     });
+    const updated = await prisma.scholarship.findUnique({ where: { id } });
+    const deferred = outcome.job.status === 'DEFERRED';
 
     return {
-      status: 200,
+      status: deferred ? 202 : 200,
       body: {
         success: true,
-        message: `Successfully synchronized live program criteria and intake deadlines for ${scholarship.name}`,
+        message: deferred
+          ? `Refresh for ${scholarship.name} is deferred until Gemini sync capacity is available.`
+          : `Successfully ran the source-checked refresh for ${scholarship.name}.`,
         data: {
           id: updated.id,
           name: updated.name,
           lastScraped: updated.lastScraped,
-          status: 'Synced with official scholarship commission portal',
+          job: outcome.job,
+          status: outcome.job.status,
         },
       },
     };
   } catch (error) {
     console.error('Sync scholarship error:', error);
-    return { status: 500, body: { success: false, message: 'Failed to synchronize scholarship data.' } };
+    return syncFailure(error, 'Failed to synchronize scholarship data.');
   }
 };
 
-export const syncAllScholarships = async () => {
+export const syncAllScholarships = async (adminId = null) => {
   try {
-    const count = await prisma.scholarship.updateMany({
-      data: {
-        lastScraped: new Date(),
-      },
-    });
+    const outcome = await runManualSync({ type: SYNC_JOB_TYPES.SCHOLARSHIPS, adminId });
 
     return {
       status: 200,
       body: {
         success: true,
-        message: `Successfully synced live data for all ${count.count} scholarship programs.`,
+        message: `Scholarship sync ${outcome.job.status.toLowerCase()}: ${outcome.job.created} new and ${outcome.job.updated} updated programs.`,
+        data: { job: outcome.job, result: outcome.result },
         syncedAt: new Date(),
       },
     };
   } catch (error) {
     console.error('Sync all scholarships error:', error);
-    return { status: 500, body: { success: false, message: 'Failed to sync scholarships.' } };
+    return syncFailure(error, 'Failed to sync scholarships.');
   }
 };

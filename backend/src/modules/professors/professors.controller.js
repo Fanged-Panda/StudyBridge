@@ -12,6 +12,7 @@ export async function list(req, res) {
       university: req.query.university,
       universityId: req.query.universityId,
       field: req.query.field,
+      department: req.query.department,
       page: req.query.page,
       limit: req.query.limit,
     });
@@ -24,6 +25,14 @@ export async function list(req, res) {
 export async function fields(_req, res) {
   try {
     return res.json({ success: true, data: await professors.listFields() });
+  } catch (error) {
+    return fail(res, error);
+  }
+}
+
+export async function departments(_req, res) {
+  try {
+    return res.json({ success: true, data: await professors.listDepartments() });
   } catch (error) {
     return fail(res, error);
   }

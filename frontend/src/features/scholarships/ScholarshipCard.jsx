@@ -1,7 +1,7 @@
 import Badge from '../../components/ui/Badge';
 import Button from '../../components/ui/Button';
 import Card from '../../components/ui/Card';
-import { Award, Calendar, CheckCircle2, Globe, Sparkles, ExternalLink, BadgeCheck } from 'lucide-react';
+import { Award, Calendar, CheckCircle2, Globe, Sparkles, ExternalLink, BadgeCheck, Edit3, RefreshCw, Trash2 } from 'lucide-react';
 
 const currencyFormatter = new Intl.NumberFormat('en-US', {
   style: 'currency',
@@ -9,7 +9,17 @@ const currencyFormatter = new Intl.NumberFormat('en-US', {
   maximumFractionDigits: 0,
 });
 
-const ScholarshipCard = ({ scholarship, onSelect, onCheckFit }) => {
+const ScholarshipCard = ({
+  scholarship,
+  onSelect,
+  onCheckFit,
+  isAdmin = false,
+  onEditClick,
+  onSyncClick,
+  onDeleteClick,
+  syncing = false,
+  deleting = false,
+}) => {
   const {
     id,
     name,
@@ -38,10 +48,12 @@ const ScholarshipCard = ({ scholarship, onSelect, onCheckFit }) => {
           </div>
 
           <div className="flex shrink-0 items-center gap-1.5">
-            <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700">
-              <BadgeCheck className="h-3 w-3" /> Live
-            </span>
-            {websiteUrl && (
+            {!isAdmin && (
+              <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700">
+                <BadgeCheck className="h-3 w-3" /> Live
+              </span>
+            )}
+            {!isAdmin && websiteUrl && (
               <a
                 href={websiteUrl}
                 target="_blank"
@@ -52,6 +64,29 @@ const ScholarshipCard = ({ scholarship, onSelect, onCheckFit }) => {
               >
                 <ExternalLink className="h-3.5 w-3.5" />
               </a>
+            )}
+            {isAdmin && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => onEditClick?.(scholarship)}
+                  className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 p-1.5 text-primary transition hover:border-brand hover:bg-brand/5"
+                  title="Edit scholarship"
+                  aria-label={`Edit ${name}`}
+                >
+                  <Edit3 className="h-3.5 w-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onDeleteClick?.(scholarship)}
+                  disabled={deleting}
+                  className="inline-flex items-center rounded-full border border-red-200 bg-red-50 p-1.5 text-red-600 transition hover:border-red-400 hover:bg-red-100 disabled:opacity-50"
+                  title="Delete scholarship"
+                  aria-label={`Delete ${name}`}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              </>
             )}
           </div>
         </div>
@@ -116,14 +151,26 @@ const ScholarshipCard = ({ scholarship, onSelect, onCheckFit }) => {
         >
           Details
         </Button>
-        <Button
-          variant="accent"
-          onClick={() => onCheckFit?.(scholarship)}
-          className="text-xs py-2 px-3 inline-flex items-center justify-center gap-1.5"
-        >
-          <Sparkles className="h-3.5 w-3.5" />
-          Check Fit
-        </Button>
+        {isAdmin ? (
+          <Button
+            variant="accent"
+            onClick={() => onSyncClick?.(scholarship)}
+            disabled={syncing}
+            className="text-xs py-2 px-3 inline-flex items-center justify-center gap-1.5"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${syncing ? 'animate-spin' : ''}`} />
+            {syncing ? 'Syncing…' : 'Sync'}
+          </Button>
+        ) : (
+          <Button
+            variant="accent"
+            onClick={() => onCheckFit?.(scholarship)}
+            className="text-xs py-2 px-3 inline-flex items-center justify-center gap-1.5"
+          >
+            <Sparkles className="h-3.5 w-3.5" />
+            Check Fit
+          </Button>
+        )}
       </div>
     </Card>
   );

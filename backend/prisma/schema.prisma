@@ -50,60 +50,175 @@ model Student {
 }
 
 model University {
-  id                  String               @id @default(cuid())
-  name                String               @unique @db.VarChar(150)
-  country             String               @db.VarChar(100)
-  city                String?              @db.VarChar(100)
-  ranking             Int
-  tuitionAnnualUsd    Int?
-  acceptanceRate      Float?
-  applicationFee      Int?
-  applicationDeadline String?              @db.VarChar(100)
-  ieltsRequirement    Float?
-  greRequirement      Int?
-  websiteUrl          String?              @db.VarChar(255)
-  courses             Json?
-  lastScraped         DateTime?
-  createdAt           DateTime             @default(now())
-  updatedAt           DateTime             @updatedAt
-  followers           FollowedUniversity[]
-  notifications       Notification[]
-  professors          Professor[]
+  id                   String               @id @default(cuid())
+  name                 String               @unique @db.VarChar(150)
+  country              String               @db.VarChar(100)
+  city                 String?              @db.VarChar(100)
+  ranking              Int
+  tuitionAnnualUsd     Int?
+  acceptanceRate       Float?
+  applicationFee       Int?
+  applicationDeadline  String?              @db.VarChar(100)
+  ieltsRequirement     Float?
+  greRequirement       Int?
+  websiteUrl           String?              @db.VarChar(255)
+  courses              Json?
+  lastScraped          DateTime?
+  lastSyncedAt         DateTime?
+  nextSyncAt           DateTime?
+  professorsNextSyncAt DateTime?
+  syncStatus           String?              @db.VarChar(30)
+  syncError            String?              @db.Text
+  adminVerifiedAt      DateTime?
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+  followers            FollowedUniversity[]
+  notifications        Notification[]
+  professors           Professor[]
+
+  @@index([nextSyncAt])
+  @@index([professorsNextSyncAt])
 }
 
 // Faculty directory: who teaches what, at which university.
 model Professor {
-  id           String     @id @default(cuid())
-  name         String     @db.VarChar(120)
-  title        String     @db.VarChar(80)
-  department   String?    @db.VarChar(120)
-  field        String     @db.VarChar(140)
-  bio          String?    @db.Text
-  email        String?    @db.VarChar(180)
-  profileUrl   String?    @db.VarChar(300)
-  photoUrl     String?    @db.VarChar(300)
-  universityId String
-  university   University @relation(fields: [universityId], references: [id], onDelete: Cascade)
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
+  id               String     @id @default(cuid())
+  name             String     @db.VarChar(120)
+  title            String     @db.VarChar(80)
+  department       String?    @db.VarChar(120)
+  field            String     @db.VarChar(140)
+  bio              String?    @db.Text
+  email            String?    @db.VarChar(180)
+  profileUrl       String?    @db.VarChar(300)
+  photoUrl         String?    @db.VarChar(300)
+  openAlexId       String?    @db.VarChar(300)
+  worksCount       Int?
+  citedByCount     Int?
+  hIndex           Int?
+  topics           Json?
+  universityId     String
+  university       University @relation(fields: [universityId], references: [id], onDelete: Cascade)
+  lastSyncedAt     DateTime?
+  nextSyncAt       DateTime?
+  metricsUpdatedAt DateTime?
+  syncStatus       String?    @db.VarChar(30)
+  syncError        String?    @db.Text
+  adminVerifiedAt  DateTime?
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
 
-  @@unique([name, universityId])
+  @@unique([universityId, openAlexId])
+  @@index([name, universityId])
   @@index([universityId])
   @@index([field])
+  @@index([openAlexId])
+  @@index([nextSyncAt])
 }
 
 model Scholarship {
-  id           String    @id @default(cuid())
-  name         String    @unique @db.VarChar(150)
-  country      String    @db.VarChar(100)
-  amountUsd    Int?
-  fundingLevel String    @db.VarChar(50)
-  eligibility  String?
-  deadline     String?   @db.VarChar(100)
-  websiteUrl   String?   @db.VarChar(255)
-  lastScraped  DateTime?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  id              String    @id @default(cuid())
+  name            String    @unique @db.VarChar(150)
+  country         String    @db.VarChar(100)
+  amountUsd       Int?
+  fundingLevel    String    @db.VarChar(50)
+  eligibility     String?
+  deadline        String?   @db.VarChar(100)
+  websiteUrl      String?   @db.VarChar(255)
+  lastScraped     DateTime?
+  sourceUrl       String?   @db.VarChar(500)
+  sourceName      String?   @db.VarChar(160)
+  contentHash     String?   @db.VarChar(64)
+  status          String    @default("NEEDS_VERIFICATION") @db.VarChar(30)
+  lastFetchedAt   DateTime?
+  lastExtractedAt DateTime?
+  lastVerifiedAt  DateTime?
+  lastSyncedAt    DateTime?
+  nextSyncAt      DateTime?
+  syncStatus      String?   @db.VarChar(30)
+  syncError       String?   @db.Text
+  confidence      Float?
+  adminVerifiedAt DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([status])
+  @@index([nextSyncAt])
+}
+
+// Configured scholarship source pages, tracked independently from the programs
+// extracted from them so content changes can be detected before using Gemini.
+model ScholarshipSource {
+  id              String    @id @default(cuid())
+  url             String    @unique @db.VarChar(500)
+  name            String?   @db.VarChar(160)
+  country         String?   @db.VarChar(100)
+  contentHash     String?   @db.VarChar(64)
+  lastFetchedHash String?   @db.VarChar(64)
+  lastFetchedAt   DateTime?
+  lastExtractedAt DateTime?
+  lastVerifiedAt  DateTime?
+  lastChangedAt   DateTime?
+  needsExtraction Boolean   @default(true)
+  syncStatus      String?   @db.VarChar(30)
+  syncError       String?   @db.Text
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([needsExtraction])
+}
+
+// Persistent administration/background job history. Type/status stay strings
+// so new sync operations can be introduced without a database migration.
+model SyncJob {
+  id             String    @id @default(cuid())
+  type           String    @db.VarChar(60)
+  status         String    @default("QUEUED") @db.VarChar(30)
+  triggeredBy    String    @default("manual") @db.VarChar(30)
+  adminId        String?
+  targetType     String?   @db.VarChar(30)
+  targetId       String?   @db.VarChar(100)
+  startedAt      DateTime?
+  finishedAt     DateTime?
+  processed      Int       @default(0)
+  created        Int       @default(0)
+  updated        Int       @default(0)
+  unchanged      Int       @default(0)
+  failed         Int       @default(0)
+  skipped        Int       @default(0)
+  error          String?   @db.Text
+  details        Json?
+  geminiRequests Int       @default(0)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([status, createdAt])
+  @@index([type, createdAt])
+  @@index([type, status, targetId])
+}
+
+// Short-lived database locks shared by all backend instances.
+model SyncLock {
+  key       String   @id @db.VarChar(100)
+  owner     String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([expiresAt])
+}
+
+// Application-level Gemini accounting. This is intentionally not treated as
+// Google's official quota; it is a conservative shared budget.
+model GeminiUsageDaily {
+  day                 String    @id @db.VarChar(10)
+  chatRequests        Int       @default(0)
+  syncRequests        Int       @default(0)
+  admissionRequests   Int       @default(0)
+  scholarshipRequests Int       @default(0)
+  quotaErrors         Int       @default(0)
+  circuitOpenUntil    DateTime?
+  lastQuotaErrorAt    DateTime?
+  updatedAt           DateTime  @updatedAt
 }
 
 model FollowedUniversity {

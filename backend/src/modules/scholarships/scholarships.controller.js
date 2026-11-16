@@ -16,11 +16,11 @@ export const getScholarshipCountries = async (req, res) => {
 };
 
 export const syncScholarship = async (req, res) => {
-  const result = await scholarshipsService.syncScholarship(req.params.id);
+  const result = await scholarshipsService.syncScholarship(req.params.id, req.user?.id);
   return res.status(result.status).json(result.body);
 };
 
 export const syncAllScholarships = async (req, res) => {
-  const result = await scholarshipsService.syncAllScholarships();
+  const result = await scholarshipsService.syncAllScholarships(req.user?.id);
   return res.status(result.status).json(result.body);
 };

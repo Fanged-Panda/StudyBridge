@@ -14,8 +14,7 @@ import { ChatbotPage } from './features/ai';
 
 import AdminDashboard from './pages/admin/AdminDashboard';
 
-// Profile sits after the last top-nav link so it always enters from the right
-// and, when leaving it, exits to the right.
+// Profile is last so it always enters from the right and exits to the right.
 const NAV_ORDER = ['/', '/universities', '/professors', '/scholarships', '/wordlab', '/community', '/chatbot', '/admin', '/profile'];
 
 const getNavIndex = (pathname) => {

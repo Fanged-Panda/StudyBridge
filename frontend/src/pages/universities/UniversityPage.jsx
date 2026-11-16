@@ -5,12 +5,16 @@ import api from '../../services/api';
 import UniversityFilterBar from '../../features/universities/UniversityFilterBar';
 import UniCard from '../../features/universities/UniCard';
 import UniversityDetailModal from '../../features/universities/UniversityDetailModal';
-import { Search, RotateCcw, X, Globe2, Building2, ShieldAlert, Edit3, CheckCircle2, AlertCircle, Bell } from 'lucide-react';
+import { Search, RotateCcw, X, Globe2, Building2, ShieldAlert, CheckCircle2, AlertCircle, Bell } from 'lucide-react';
 import Button from '../../components/ui/Button';
 import Card from '../../components/ui/Card';
+import Pagination from '../../components/ui/Pagination';
 import { initialUniversities } from '../../data/initialData';
 import { startFitCheck } from '../../features/ai';
-import { getCache, setCache } from '../../services/pageCache';
+import { clearCache, getCache, setCache } from '../../services/pageCache';
+
+const PAGE_SIZE = 9;
+const FETCH_LIMIT = 500;
 
 const DEFAULT_SUBJECTS = [
   'All',
@@ -45,6 +49,7 @@ const UniversityPage = () => {
     () =>
       getCache(
         uniListCacheKey({
+          limit: FETCH_LIMIT,
           search: initialSearch.trim(),
           country: initialCountry !== 'All' ? initialCountry : '',
         })
@@ -64,6 +69,9 @@ const UniversityPage = () => {
   const [editingUni, setEditingUni] = useState(null);
   const [savingUni, setSavingUni] = useState(false);
   const [uniFeedback, setUniFeedback] = useState(null);
+  const [adminFeedback, setAdminFeedback] = useState(null);
+  const [syncingUniId, setSyncingUniId] = useState(null);
+  const [deletingUniId, setDeletingUniId] = useState(null);
 
   // Search state
   const [searchQuery, setSearchQuery] = useState(initialSearch);
@@ -74,6 +82,7 @@ const UniversityPage = () => {
   const [appliedBudget, setAppliedBudget] = useState('All');
   const [appliedIelts, setAppliedIelts] = useState('All');
   const [appliedSort, setAppliedSort] = useState('ranking');
+  const [page, setPage] = useState(1);
 
   // Detail Modal state
   const [activeModalUni, setActiveModalUni] = useState(null);
@@ -211,7 +220,7 @@ const UniversityPage = () => {
   const loadUniversities = useCallback(async () => {
     try {
       const params = {
-        limit: 100,
+        limit: FETCH_LIMIT,
         sort: appliedSort,
       };
 
@@ -297,6 +306,25 @@ const UniversityPage = () => {
     return list;
   }, [universities, searchQuery, appliedCountry, appliedSubject, appliedBudget, appliedIelts, appliedSort, onlyFollowed, followedUniIds]);
 
+  const totalPages = Math.max(1, Math.ceil(displayedUniversities.length / PAGE_SIZE));
+  const paginatedUniversities = useMemo(
+    () => displayedUniversities.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
+    [displayedUniversities, page],
+  );
+
+  useEffect(() => {
+    setPage(1);
+  }, [searchQuery, appliedCountry, appliedSubject, appliedBudget, appliedIelts, appliedSort, onlyFollowed]);
+
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [page, totalPages]);
+
+  const goToPage = (nextPage) => {
+    setPage(nextPage);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   // Extract unique countries
   const countries = useMemo(() => {
     const all = universities.map((u) => u.country).filter(Boolean);
@@ -381,6 +409,52 @@ const UniversityPage = () => {
     }
   };
 
+  const handleAdminSyncUni = async (uni) => {
+    if (!uni?.id) return;
+    setSyncingUniId(uni.id);
+    setAdminFeedback(null);
+    try {
+      const res = await api.post(`/admin/sync/universities/${uni.id}`, null, { timeout: 180000 });
+      setAdminFeedback({ type: 'success', message: res.data?.message || `Synced ${uni.name}.` });
+      clearCachesAfterAdminAction();
+      await loadUniversities();
+    } catch (err) {
+      setAdminFeedback({
+        type: 'error',
+        message: err.response?.data?.message || 'Could not sync this university.',
+      });
+    } finally {
+      setSyncingUniId(null);
+    }
+  };
+
+  const handleAdminDeleteUni = async (uni) => {
+    if (!uni?.id) return;
+    if (!window.confirm(`Delete ${uni.name}? This also removes its professors and follower links.`)) return;
+    setDeletingUniId(uni.id);
+    setAdminFeedback(null);
+    try {
+      const res = await api.delete(`/admin/universities/${uni.id}`);
+      setUniversities((prev) => prev.filter((item) => item.id !== uni.id));
+      setActiveModalUni((current) => (current?.id === uni.id ? null : current));
+      setAdminFeedback({ type: 'success', message: res.data?.message || `Deleted ${uni.name}.` });
+      clearCachesAfterAdminAction();
+    } catch (err) {
+      setAdminFeedback({
+        type: 'error',
+        message: err.response?.data?.message || 'Could not delete this university.',
+      });
+    } finally {
+      setDeletingUniId(null);
+    }
+  };
+
+  const clearCachesAfterAdminAction = () => {
+    clearCache('uni:');
+    clearCache('admin:');
+    clearCache('home:');
+  };
+
   const hasActiveFilters =
     appliedCountry !== 'All' ||
     appliedSubject !== 'All' ||
@@ -410,6 +484,18 @@ const UniversityPage = () => {
           >
             Open Admin Portal &rarr;
           </Button>
+        </div>
+      )}
+
+      {adminFeedback && (
+        <div
+          className={`rounded-2xl border p-3.5 text-xs font-semibold ${
+            adminFeedback.type === 'success'
+              ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+              : 'border-red-200 bg-red-50 text-red-700'
+          }`}
+        >
+          {adminFeedback.message}
         </div>
       )}
 
@@ -524,25 +610,32 @@ const UniversityPage = () => {
           </Button>
         </div>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {displayedUniversities.map((university) => (
-            <UniCard
-              key={university.id || university.name}
-              university={university}
-              onSelect={handleOpenDetails}
-              onEditClick={(uni) => {
-                setEditingUni({
-                  ...uni,
-                  notifyFollowers: true,
-                  customNotificationTitle: '',
-                  customNotificationMessage: '',
-                });
-                setUniFeedback(null);
-              }}
-              onCheckFit={(item) => startFitCheck(navigate, 'university', item)}
-            />
-          ))}
-        </div>
+        <>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {paginatedUniversities.map((university) => (
+              <UniCard
+                key={university.id || university.name}
+                university={university}
+                onSelect={handleOpenDetails}
+                onEditClick={(uni) => {
+                  setEditingUni({
+                    ...uni,
+                    notifyFollowers: true,
+                    customNotificationTitle: '',
+                    customNotificationMessage: '',
+                  });
+                  setUniFeedback(null);
+                }}
+                onSyncClick={handleAdminSyncUni}
+                onDeleteClick={handleAdminDeleteUni}
+                syncing={syncingUniId === university.id}
+                deleting={deletingUniId === university.id}
+                onCheckFit={(item) => startFitCheck(navigate, 'university', item)}
+              />
+            ))}
+          </div>
+          <Pagination page={page} totalPages={totalPages} onChange={goToPage} />
+        </>
       )}
 
       {/* Refined University Detail Modal */}

@@ -3,6 +3,9 @@ const variants = {
   brand: 'bg-brand/10 text-brand',
   accent: 'bg-accent/10 text-accent',
   success: 'bg-emerald-100 text-emerald-700',
+  warning: 'bg-amber-100 text-amber-800',
+  danger: 'bg-red-100 text-red-700',
+  outline: 'border border-slate-300 bg-white text-slate-600',
 };
 
 const Badge = ({ variant = 'default', className = '', children, ...props }) => {

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import Button from '../../components/ui/Button';
 import Card from '../../components/ui/Card';
 import Badge from '../../components/ui/Badge';
-import { BookOpen, Bookmark, BookmarkCheck, ArrowRight, BadgeCheck, Edit3, Sparkles } from 'lucide-react';
+import { BookOpen, Bookmark, BookmarkCheck, ArrowRight, BadgeCheck, Edit3, RefreshCw, Sparkles, Trash2 } from 'lucide-react';
 import { isBookmarked, toggleBookmark } from '../../services/bookmarks';
 import api from '../../services/api';
 
@@ -23,6 +23,10 @@ const UniCard = (props) => {
     onSelect,
     onCheckFit,
     onEditClick,
+    onSyncClick,
+    onDeleteClick,
+    syncing = false,
+    deleting = false,
   } = props;
 
   const [isSaved, setIsSaved] = useState(() => (university?.id ? isBookmarked(university.id) : false));
@@ -145,25 +149,27 @@ const UniCard = (props) => {
           </div>
 
           <div className="flex shrink-0 items-center gap-1.5">
-            <button
-              type="button"
-              onClick={handleBookmark}
-              disabled={savingBookmark}
-              aria-pressed={isSaved}
-              className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-bold transition disabled:opacity-60 ${
-                isSaved
-                  ? 'border-brand bg-brand text-white hover:bg-primary'
-                  : 'border-slate-200 bg-slate-50 text-slate-700 hover:border-accent hover:bg-accent/5 hover:text-accent'
-              }`}
-              title={
-                isSaved
-                  ? 'Saved to your profile. Click to remove and stop updates.'
-                  : 'Save to your profile and get notifications about admission changes'
-              }
-            >
-              {isSaved ? <BookmarkCheck className="h-3.5 w-3.5" /> : <Bookmark className="h-3.5 w-3.5" />}
-              <span>{isSaved ? 'Saved' : 'Save'}</span>
-            </button>
+            {!isAdmin ? (
+              <button
+                type="button"
+                onClick={handleBookmark}
+                disabled={savingBookmark}
+                aria-pressed={isSaved}
+                className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-bold transition disabled:opacity-60 ${
+                  isSaved
+                    ? 'border-brand bg-brand text-white hover:bg-primary'
+                    : 'border-slate-200 bg-slate-50 text-slate-700 hover:border-accent hover:bg-accent/5 hover:text-accent'
+                }`}
+                title={
+                  isSaved
+                    ? 'Saved to your profile. Click to remove and stop updates.'
+                    : 'Save to your profile and get notifications about admission changes'
+                }
+              >
+                {isSaved ? <BookmarkCheck className="h-3.5 w-3.5" /> : <Bookmark className="h-3.5 w-3.5" />}
+                <span>{isSaved ? 'Saved' : 'Save'}</span>
+              </button>
+            ) : null}
 
             {isAdmin && (
               <button
@@ -177,6 +183,21 @@ const UniCard = (props) => {
                 aria-label="Edit university details"
               >
                 <Edit3 className="h-3.5 w-3.5" />
+              </button>
+            )}
+            {isAdmin && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDeleteClick?.(uni);
+                }}
+                disabled={deleting}
+                className="inline-flex items-center rounded-full border border-red-200 bg-red-50 p-1.5 text-red-600 transition hover:border-red-400 hover:bg-red-100 disabled:opacity-50"
+                title="Delete university"
+                aria-label={`Delete ${name}`}
+              >
+                <Trash2 className="h-3.5 w-3.5" />
               </button>
             )}
           </div>
@@ -220,9 +241,11 @@ const UniCard = (props) => {
               GRE {greRequirement}+
             </span>
           )}
-          <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700">
-            <BadgeCheck className="h-3 w-3" /> Live Verified
-          </span>
+          {!isAdmin && (
+            <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700">
+              <BadgeCheck className="h-3 w-3" /> Live Verified
+            </span>
+          )}
         </div>
 
         {/* Courses Preview */}
@@ -261,14 +284,26 @@ const UniCard = (props) => {
           Details
           <ArrowRight className="h-3.5 w-3.5" />
         </Button>
-        <Button
-          variant="accent"
-          onClick={() => onCheckFit?.(uni)}
-          className="text-xs py-2 px-3 inline-flex items-center justify-center gap-1.5"
-        >
-          <Sparkles className="h-3.5 w-3.5" />
-          Check Fit
-        </Button>
+        {isAdmin ? (
+          <Button
+            variant="accent"
+            onClick={() => onSyncClick?.(uni)}
+            disabled={syncing}
+            className="text-xs py-2 px-3 inline-flex items-center justify-center gap-1.5"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${syncing ? 'animate-spin' : ''}`} />
+            {syncing ? 'Syncing…' : 'Sync'}
+          </Button>
+        ) : (
+          <Button
+            variant="accent"
+            onClick={() => onCheckFit?.(uni)}
+            className="text-xs py-2 px-3 inline-flex items-center justify-center gap-1.5"
+          >
+            <Sparkles className="h-3.5 w-3.5" />
+            Check Fit
+          </Button>
+        )}
       </div>
     </Card>
   );

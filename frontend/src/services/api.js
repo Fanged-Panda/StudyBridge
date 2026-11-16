@@ -54,6 +54,7 @@ export const communityAdminApi = {
 export const professorsApi = {
   list: async (params) => (await api.get('/professors', { params })).data.data,
   fields: async () => (await api.get('/professors/fields')).data.data,
+  departments: async () => (await api.get('/professors/departments')).data.data,
   forUniversity: async (universityId, params) =>
     (await api.get(`/professors/university/${universityId}`, { params })).data.data,
 };

@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { LogOut, Bell, ShieldAlert } from 'lucide-react';
+import { LogOut, Bell } from 'lucide-react';
 import { beginLogout } from '../../App';
 import api from '../../services/api';
 import NotificationDropdown from './NotificationDropdown';
@@ -155,23 +155,14 @@ const TopNav = () => {
 
   const EXPLORE_PATHS = ['/universities', '/scholarships', '/professors'];
 
-  const navItems =
-    userRole === 'admin'
-      ? [
-          { to: '/', label: 'Home' },
-          { to: '/universities', label: 'Explore', matches: EXPLORE_PATHS },
-          { to: '/admin', label: 'Admin', isAdminPill: true },
-          { to: '/wordlab', label: 'WordLab' },
-          { to: '/community', label: 'Community' },
-          { to: '/chatbot', label: 'Chatbot' },
-        ]
-      : [
-          { to: '/', label: 'Home' },
-          { to: '/universities', label: 'Explore', matches: EXPLORE_PATHS },
-          ...(isLoggedIn ? [{ to: '/wordlab', label: 'WordLab' }] : []),
-          { to: '/community', label: 'Community' },
-          { to: '/chatbot', label: 'Chatbot' },
-        ];
+  // The admin portal lives behind the avatar, not in the nav.
+  const navItems = [
+    { to: '/', label: 'Home' },
+    { to: '/universities', label: 'Explore', matches: EXPLORE_PATHS },
+    ...(isLoggedIn ? [{ to: '/wordlab', label: 'WordLab' }] : []),
+    { to: '/community', label: 'Community' },
+    { to: '/chatbot', label: 'Chatbot' },
+  ];
 
   return (
     <header
@@ -192,27 +183,11 @@ const TopNav = () => {
         <nav className="hidden flex-1 items-center justify-center gap-3 md:flex lg:gap-6">
           {navItems.map((item) => {
             const active = item.matches ? item.matches.some((path) => location.pathname.startsWith(path)) : isActive(item.to);
-            if (item.isAdminPill) {
-              return (
-                <Link
-                  key={item.to}
-                  to={item.to}
-                  className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1 text-sm font-bold transition shadow-2xs ${
-                    active
-                      ? 'bg-primary text-white ring-2 ring-primary/20 shadow-xs'
-                      : 'border border-slate-300 bg-slate-100/90 text-slate-800 hover:border-emerald-400 hover:bg-emerald-50 hover:text-emerald-800'
-                  }`}
-                >
-                  <ShieldAlert className="h-4 w-4 text-emerald-600 shrink-0" />
-                  <span>Admin</span>
-                </Link>
-              );
-            }
             return (
               <Link
                 key={item.to}
                 to={item.to}
-                className={`text-sm font-medium transition-colors ${item.wideOnly ? 'hidden lg:inline-block' : ''} ${
+                className={`text-sm font-medium transition-colors ${
                   active
                     ? 'font-semibold text-primary'
                     : 'text-text-muted hover:text-primary'
