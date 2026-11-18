@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import Button from '../../components/ui/Button';
 import Card from '../../components/ui/Card';
 import Badge from '../../components/ui/Badge';
-import { BookOpen, Bookmark, BookmarkCheck, ArrowRight, BadgeCheck, Edit3, RefreshCw, Sparkles, Trash2 } from 'lucide-react';
+import { BookOpen, Bookmark, BookmarkCheck, ArrowRight, Edit3, ExternalLink, RefreshCw, Sparkles, Trash2 } from 'lucide-react';
 import { isBookmarked, toggleBookmark } from '../../services/bookmarks';
 import api from '../../services/api';
 
@@ -149,6 +149,19 @@ const UniCard = (props) => {
           </div>
 
           <div className="flex shrink-0 items-center gap-1.5">
+            {uni.websiteUrl && (
+              <a
+                href={uni.websiteUrl}
+                target="_blank"
+                rel="noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 p-1.5 text-slate-500 transition hover:border-accent hover:text-accent"
+                title={`Open ${name} official website`}
+                aria-label={`Open ${name} official website`}
+              >
+                <ExternalLink className="h-3.5 w-3.5" />
+              </a>
+            )}
             {!isAdmin ? (
               <button
                 type="button"
@@ -239,11 +252,6 @@ const UniCard = (props) => {
           {greRequirement && (
             <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700">
               GRE {greRequirement}+
-            </span>
-          )}
-          {!isAdmin && (
-            <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700">
-              <BadgeCheck className="h-3 w-3" /> Live Verified
             </span>
           )}
         </div>

@@ -21,6 +21,92 @@ const TABS = [
 
 const GOAL_OPTIONS = [1, 3, 5, 10, 15];
 
+// WordLab is backed by the database; these samples keep the page usable when
+// the API cannot be reached.
+const SAMPLE_WORDS = [
+  {
+    id: 'sample-word-1',
+    word: 'ubiquitous',
+    phonetic: '/juːˈbɪk.wɪ.təs/',
+    partOfSpeech: 'adjective',
+    definition: 'Present or found everywhere at the same time.',
+    example: 'Scholarship portals are now ubiquitous for international applicants.',
+    synonyms: ['omnipresent', 'pervasive'],
+    learnedAt: '2026-11-16T09:12:00.000Z',
+    knewIt: false,
+  },
+  {
+    id: 'sample-word-2',
+    word: 'meticulous',
+    phonetic: '/məˈtɪk.jə.ləs/',
+    partOfSpeech: 'adjective',
+    definition: 'Showing great attention to detail; very careful and precise.',
+    example: 'Her meticulous notes made the visa application painless.',
+    synonyms: ['thorough', 'scrupulous', 'painstaking'],
+    learnedAt: '2026-11-15T18:40:00.000Z',
+    knewIt: false,
+  },
+  {
+    id: 'sample-word-3',
+    word: 'prestigious',
+    phonetic: '/prɛˈstɪdʒ.əs/',
+    partOfSpeech: 'adjective',
+    definition: 'Inspiring respect and admiration because of high status.',
+    example: 'He turned down a prestigious offer to take the funded one.',
+    synonyms: ['reputable', 'esteemed'],
+    learnedAt: '2026-11-14T11:05:00.000Z',
+    knewIt: true,
+  },
+  {
+    id: 'sample-word-4',
+    word: 'prerequisite',
+    phonetic: '/ˌpriːˈrɛk.wɪ.zɪt/',
+    partOfSpeech: 'noun',
+    definition: 'Something required beforehand as a condition for something else.',
+    example: 'Calculus is a prerequisite for most graduate engineering programs.',
+    synonyms: ['requirement', 'condition'],
+    learnedAt: '2026-11-13T16:22:00.000Z',
+    knewIt: false,
+  },
+  {
+    id: 'sample-word-5',
+    word: 'substantiate',
+    phonetic: '/səbˈstæn.ʃi.eɪt/',
+    partOfSpeech: 'verb',
+    definition: 'To provide evidence to support or prove a claim.',
+    example: 'Substantiate your statement of purpose with specific research experience.',
+    synonyms: ['prove', 'corroborate', 'verify'],
+    learnedAt: '2026-11-12T08:48:00.000Z',
+    knewIt: false,
+  },
+  {
+    id: 'sample-word-6',
+    word: 'concise',
+    phonetic: '/kənˈsaɪs/',
+    partOfSpeech: 'adjective',
+    definition: 'Giving a lot of information clearly in a few words.',
+    example: 'Keep the recommendation summary concise and factual.',
+    synonyms: ['brief', 'succinct'],
+    learnedAt: '2026-11-11T13:30:00.000Z',
+    knewIt: false,
+  },
+];
+
+const SAMPLE_DAILY_QUEUE = SAMPLE_WORDS.map(({ id, learnedAt, knewIt, ...word }) => word);
+
+const SAMPLE_DASHBOARD = {
+  today: SAMPLE_DAILY_QUEUE[2],
+  goal: 3,
+  learnedCount: 1,
+  remaining: 2,
+  goalMet: false,
+  knownToday: 0,
+  totalLearned: SAMPLE_WORDS.length,
+  streak: 4,
+  canTakeTest: true,
+  recentTests: [],
+};
+
 const StatCard = ({ icon: Icon, label, value, hint }) => (
   <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
     <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] text-text-muted">
@@ -39,7 +125,6 @@ const VocabularyPage = () => {
   const [words, setWords] = useState(cached?.words ?? []);
   const [loading, setLoading] = useState(!cached?.dashboard);
   const [wordsLoading, setWordsLoading] = useState(!cached?.words);
-  const [error, setError] = useState('');
   const [goalSaving, setGoalSaving] = useState(false);
   const [goalError, setGoalError] = useState('');
   const [sessionOver, setSessionOver] = useState(() =>
@@ -53,7 +138,8 @@ const VocabularyPage = () => {
     try {
       setWords(await vocabularyApi.words());
     } catch {
-      // The dashboard error banner covers connectivity problems.
+      // Database/API unavailable: fall back to the sample collection.
+      setWords(SAMPLE_WORDS);
     } finally {
       setWordsLoading(false);
     }
@@ -61,13 +147,14 @@ const VocabularyPage = () => {
 
   const loadAll = useCallback(async () => {
     setLoading(true);
-    setError('');
     try {
       const data = await vocabularyApi.dashboard();
       setDashboard(data);
       setSessionOver(Boolean(data.goalMet) || !data.today);
-    } catch (err) {
-      setError(err?.response?.data?.message || 'Could not load WordLab. Please try again.');
+    } catch {
+      // Database/API unavailable: render the sample session instead of an error.
+      setDashboard(SAMPLE_DASHBOARD);
+      setSessionOver(false);
     } finally {
       setLoading(false);
     }
@@ -161,20 +248,10 @@ const VocabularyPage = () => {
         </button>
       </div>
 
+
       {loading ? (
         <div className="mt-10 flex items-center justify-center rounded-3xl border border-slate-200 bg-white p-16 text-sm text-text-muted shadow-soft">
           <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading WordLab…
-        </div>
-      ) : error ? (
-        <div className="mt-10 rounded-3xl border border-red-200 bg-red-50 p-8 text-center">
-          <p className="text-sm font-semibold text-red-700">{error}</p>
-          <button
-            type="button"
-            onClick={loadAll}
-            className="mt-4 rounded-full bg-primary px-5 py-2 text-sm font-semibold text-white"
-          >
-            Try again
-          </button>
         </div>
       ) : (
         <>

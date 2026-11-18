@@ -9,6 +9,13 @@ html {
   font-size: 110%;
 }
 
+/* Desktop screens are read further away, so they scale a further 10%. */
+@media (min-width: 768px) {
+  html {
+    font-size: 121%;
+  }
+}
+
 html,
 body,
 #root {
@@ -169,6 +176,51 @@ html.slide-backward::view-transition-new(root) {
   to {
     transform: translateX(100%);
     opacity: 0.9;
+  }
+}
+
+/* Fallback for browsers without the View Transition API. */
+.page-transition {
+  min-height: 100%;
+  animation-duration: 0.38s;
+  animation-timing-function: cubic-bezier(0.25, 1, 0.5, 1);
+  animation-fill-mode: both;
+  will-change: transform, opacity;
+}
+
+.page-transition.slide-forward {
+  animation-name: fallback-slide-in-from-right;
+}
+
+.page-transition.slide-backward {
+  animation-name: fallback-slide-in-from-left;
+}
+
+@keyframes fallback-slide-in-from-right {
+  from {
+    transform: translateX(100%);
+    opacity: 0.92;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes fallback-slide-in-from-left {
+  from {
+    transform: translateX(-100%);
+    opacity: 0.92;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-transition {
+    animation: none;
   }
 }
 

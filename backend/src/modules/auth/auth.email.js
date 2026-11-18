@@ -1,12 +1,12 @@
 /**
  * Account emails (password-reset code).
  *
- * Sends the 6-digit password-reset code over SMTP (see services/mailer.js for
- * the SMTP_* variables). `sendPasswordResetEmail` never throws: callers decide
+ * Sends the 6-digit password-reset code through the Gmail API (see
+ * services/mailer.js for the GMAIL_* variables). `sendPasswordResetEmail` never throws: callers decide
  * how to report a failed send. Returns { delivered, reason }.
  */
 
-import { escapeHtml, isSmtpConfigured, sendSmtpMail } from '../../services/mailer.js';
+import { escapeHtml, isGmailConfigured, sendGmailMail } from '../../services/mailer.js';
 
 export async function sendPasswordResetEmail({ to, name, code, minutes }) {
   const firstName = String(name || 'there').trim().split(/\s+/)[0] || 'there';
@@ -27,13 +27,13 @@ export async function sendPasswordResetEmail({ to, name, code, minutes }) {
   </div>
 </body></html>`;
 
-  if (!isSmtpConfigured()) {
-    console.info('[auth] password reset email not sent (SMTP_HOST/SMTP_USER/SMTP_PASS missing)');
+  if (!isGmailConfigured()) {
+    console.info('[auth] password reset email not sent (GMAIL_* credentials missing)');
     console.info(`  to: ${to}\n  code: ${code}`);
-    return { delivered: false, reason: 'smtp_not_configured' };
+    return { delivered: false, reason: 'gmail_not_configured' };
   }
 
-  const result = await sendSmtpMail({
+  const result = await sendGmailMail({
     to,
     subject: `${code} is your StudyBridge verification code`,
     text,

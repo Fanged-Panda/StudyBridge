@@ -1,15 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-
-const EXPLORE_PATHS = ['/universities', '/scholarships', '/professors'];
-
-const items = [
-  { to: '/', label: 'Home', icon: 'home' },
-  { to: '/universities', label: 'Explore', icon: 'explore', matches: EXPLORE_PATHS },
-  { to: '/wordlab', label: 'WordLab', icon: 'menu_book' },
-  { to: '/community', label: 'Community', icon: 'groups' },
-  { to: '/chatbot', label: 'Chatbot', icon: 'smart_toy' },
-];
+import { PRIMARY_NAV_ITEMS } from '../../navigationOrder';
 
 const MobileBottomNav = () => {
   const location = useLocation();
@@ -33,7 +24,7 @@ const MobileBottomNav = () => {
   };
 
   // Profile is reachable from the avatar in the top bar, not this nav.
-  const visibleItems = items.filter((item) => isLoggedIn || item.to !== '/wordlab');
+  const visibleItems = PRIMARY_NAV_ITEMS.filter((item) => isLoggedIn || item.to !== '/wordlab');
 
   return (
     <nav className="fixed inset-x-3 bottom-4 z-50 sm:inset-x-6 sm:bottom-6 md:hidden" aria-label="Primary">

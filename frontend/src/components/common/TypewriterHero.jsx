@@ -204,10 +204,10 @@ const TypewriterHero = () => {
   }, []);
 
   return (
-    <header className="relative pt-24 pb-32">
+    <header className="relative pt-24 pb-24">
       <div className="mx-auto max-w-[1200px] px-8 text-center relative z-10">
         {/* Badge */}
-        <div className="mb-8 inline-flex items-center gap-2 rounded-full bg-secondary px-4 py-1.5 text-xs font-bold uppercase tracking-wide text-primary">
+        <div className="mb-6 inline-flex items-center gap-2 rounded-full bg-secondary px-4 py-1.5 text-xs font-bold uppercase tracking-wide text-primary">
           <span className="material-symbols-outlined text-sm">star</span>
           Your future starts here
         </div>

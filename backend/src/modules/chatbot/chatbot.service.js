@@ -230,9 +230,14 @@ export const sendMessage = async (userId, message, history) => {
     const systemPrompt = buildSystemPrompt(studentContext, universityContext, scholarshipContext);
 
     // --- Call Gemini with Fallback Models ---
-    const preferredModel = process.env.GEMINI_MODEL || 'gemini-3.5-flash';
+    const configuredModel = (process.env.GEMINI_MODEL || '').trim();
+    const preferredModel = configuredModel && configuredModel !== 'gemini-3.5-flash'
+      ? configuredModel
+      : 'gemini-3.5-flash-lite';
     const fallbackModels = [
       preferredModel,
+      'gemini-3.5-flash-lite',
+      'gemini-2.5-flash',
       'gemini-3.5-flash',
       'gemini-3.1-flash-lite-preview',
       'gemini-3-flash-preview',

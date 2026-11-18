@@ -1,0 +1,21 @@
+<mxfile host="app.diagrams.net" modified="2026-11-16T14:31:00.000Z" agent="StudyBridge" version="24.7.17">
+  <diagram id="overview-studybridge" name="System Overview">
+    <mxGraphModel dx="1500" dy="950" grid="1" gridSize="10" page="1" pageScale="1" pageWidth="1700" pageHeight="1200">
+      <root>
+        <mxCell id="0"/><mxCell id="1" parent="0"/>
+        <mxCell id="users" value="&lt;b&gt;Students&lt;/b&gt;&lt;br&gt;Discover study opportunities&lt;br&gt;Build profiles and track goals&lt;br&gt;Learn vocabulary and participate in community" style="shape=mxgraph.networks.cloud;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=14;" vertex="1" parent="1"><mxGeometry x="50" y="300" width="260" height="145" as="geometry"/></mxCell>
+        <mxCell id="web" value="&lt;b&gt;StudyBridge web app&lt;/b&gt;&lt;br&gt;React frontend&lt;br&gt;Responsive pages and feature components&lt;br&gt;Auth, profile, explore, community, AI, vocabulary" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=14;" vertex="1" parent="1"><mxGeometry x="410" y="270" width="290" height="200" as="geometry"/></mxCell>
+        <mxCell id="api" value="&lt;b&gt;StudyBridge API&lt;/b&gt;&lt;br&gt;Node.js + Express&lt;br&gt;Authentication and authorization&lt;br&gt;Catalog, community, AI, notification, admin APIs" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=14;" vertex="1" parent="1"><mxGeometry x="800" y="270" width="290" height="200" as="geometry"/></mxCell>
+        <mxCell id="data" value="&lt;b&gt;PostgreSQL data layer&lt;/b&gt;&lt;br&gt;Prisma schema and migrations&lt;br&gt;Student profiles and preferences&lt;br&gt;Universities, professors, scholarships&lt;br&gt;Journeys, vocabulary, notifications, sync jobs" style="shape=cylinder;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=14;" vertex="1" parent="1"><mxGeometry x="1190" y="270" width="270" height="200" as="geometry"/></mxCell>
+        <mxCell id="sync" value="&lt;b&gt;Data synchronization&lt;/b&gt;&lt;br&gt;Scheduled and on-demand jobs&lt;br&gt;Fetch, normalize, verify, and persist catalog data&lt;br&gt;Quota and lock controls" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=14;" vertex="1" parent="1"><mxGeometry x="570" y="620" width="290" height="150" as="geometry"/></mxCell>
+        <mxCell id="external" value="&lt;b&gt;External services&lt;/b&gt;&lt;br&gt;University and scholarship sources&lt;br&gt;OpenAlex research data&lt;br&gt;Gemini / Groq / OpenAI&lt;br&gt;SMTP mail delivery" style="shape=mxgraph.networks.cloud;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=14;" vertex="1" parent="1"><mxGeometry x="1010" y="620" width="280" height="150" as="geometry"/></mxCell>
+        <mxCell id="o1" value="HTTPS" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;strokeWidth=2;" edge="1" parent="1" source="users" target="web"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="o2" value="REST / JSON" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;strokeWidth=2;" edge="1" parent="1" source="web" target="api"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="o3" value="Prisma queries" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;strokeWidth=2;" edge="1" parent="1" source="api" target="data"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="o4" value="sync reads/writes" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;" edge="1" parent="1" source="sync" target="data"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="o5" value="fetch and enrich" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;" edge="1" parent="1" source="sync" target="external"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="o6" value="AI requests and email" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;" edge="1" parent="1" source="api" target="external"><mxGeometry relative="1" as="geometry"/></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

@@ -23,6 +23,48 @@ const getEstimatedLivingCost = (country = '') => {
   return 12000;
 };
 
+const EUROPEAN_COUNTRIES = new Set([
+  'albania', 'austria', 'belarus', 'belgium', 'bosnia and herzegovina', 'bulgaria',
+  'croatia', 'cyprus', 'czech republic', 'denmark', 'estonia', 'finland', 'france',
+  'germany', 'greece', 'hungary', 'iceland', 'ireland', 'italy', 'latvia', 'lithuania',
+  'luxembourg', 'malta', 'moldova', 'montenegro', 'netherlands', 'north macedonia',
+  'norway', 'poland', 'portugal', 'romania', 'serbia', 'slovakia', 'slovenia', 'spain',
+  'sweden', 'switzerland', 'uk', 'united kingdom',
+]);
+
+const ASIAN_COUNTRIES = new Set([
+  'bangladesh', 'china', 'hong kong', 'india', 'indonesia', 'japan', 'malaysia',
+  'pakistan', 'philippines', 'singapore', 'south korea', 'sri lanka', 'taiwan',
+  'thailand', 'vietnam',
+]);
+
+const normalizeCountry = (country = '') => {
+  const normalized = String(country).trim().toLowerCase();
+  if (normalized === 'usa' || normalized === 'united states') return 'united states';
+  if (normalized === 'uk' || normalized === 'united kingdom') return 'united kingdom';
+  return normalized;
+};
+
+const isScholarshipApplicableToUniversity = (scholarship, university) => {
+  const universityCountry = normalizeCountry(university.country);
+  const scholarshipCountry = normalizeCountry(scholarship.country);
+  const name = String(scholarship.name || '').toLowerCase();
+
+  if (scholarshipCountry === universityCountry) return true;
+  if (scholarshipCountry === 'europe') return EUROPEAN_COUNTRIES.has(universityCountry);
+  if (scholarshipCountry === 'asia') return ASIAN_COUNTRIES.has(universityCountry);
+
+  if (scholarshipCountry === 'global') {
+    // Destination-specific or partner-restricted programs are not general
+    // Global awards for every university.
+    if (name.includes('fulbright u.s.') || name.includes('japan/world bank') || name.includes('adb-japan')) {
+      return false;
+    }
+  }
+
+  return false;
+};
+
 // Generates rich course structures for each discipline/course string or object
 export const enrichCourses = (courses = [], tuitionAnnualUsd = 0, ieltsReq = 6.5) => {
   if (!Array.isArray(courses)) return [];
@@ -307,8 +349,8 @@ export const getUniversityById = async (id) => {
       console.warn('[On-demand sync] University queue failed:', error?.message),
     );
 
-    // Lookup matching scholarships for this university's country or global scholarships
-    const matchingScholarships = await prisma.scholarship.findMany({
+    // Show only destination-appropriate and genuinely applicable scholarships.
+    const candidateScholarships = await prisma.scholarship.findMany({
       where: {
         OR: [
           { country: { equals: university.country, mode: 'insensitive' } },
@@ -317,8 +359,11 @@ export const getUniversityById = async (id) => {
           { country: { equals: 'Asia', mode: 'insensitive' } },
         ],
       },
-      take: 6,
+      orderBy: [{ deadline: 'asc' }, { name: 'asc' }],
     });
+    const matchingScholarships = candidateScholarships
+      .filter((scholarship) => isScholarshipApplicableToUniversity(scholarship, university))
+      .slice(0, 6);
 
     const livingCost = getEstimatedLivingCost(university.country);
     const detailedCourses = enrichCourses(university.courses, university.tuitionAnnualUsd, university.ieltsRequirement);

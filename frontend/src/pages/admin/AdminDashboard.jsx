@@ -22,7 +22,6 @@ import Button from '../../components/ui/Button';
 import Badge from '../../components/ui/Badge';
 import Card from '../../components/ui/Card';
 import AdminJourneyPanel from '../../features/community/AdminJourneyPanel';
-import AdminSyncCenter from './AdminSyncCenter';
 import { clearCache, getCache, setCache } from '../../services/pageCache';
 
 const HACKER_AVATAR =
@@ -32,7 +31,6 @@ const TABS = [
   { id: 'users', label: 'Users', icon: Users },
   { id: 'universities', label: 'Add University', icon: Building2 },
   { id: 'announcements', label: 'Broadcast', icon: Bell },
-  { id: 'sync', label: 'Sync Center', icon: RefreshCw },
   { id: 'community', label: 'Community', icon: Megaphone },
 ];
 
@@ -524,6 +522,11 @@ const AdminDashboard = () => {
                       </div>
                       <h3 className="mt-2 text-base font-extrabold leading-snug text-primary">{candidate.name}</h3>
                       <p className="mt-1 text-xs text-slate-500">{candidate.country}</p>
+                      {candidate.worksCount != null && (
+                        <p className="mt-1 text-[11px] text-slate-400">
+                          {Number(candidate.worksCount).toLocaleString()} research works
+                        </p>
+                      )}
                       {candidate.citedByCount != null && (
                         <p className="mt-1 text-[11px] text-slate-400">
                           {Number(candidate.citedByCount).toLocaleString()} citations
@@ -647,7 +650,6 @@ const AdminDashboard = () => {
         </Card>
       )}
 
-      {activeTab === 'sync' && <AdminSyncCenter />}
       {activeTab === 'community' && <AdminJourneyPanel />}
     </div>
   );

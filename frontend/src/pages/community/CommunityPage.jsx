@@ -21,6 +21,113 @@ const TAGS_CACHE_KEY = 'community:tags';
 
 const feedCacheKey = (search, tag, page) => `community:feed:${search}|${tag}|${page}`;
 
+// The feed is stored in the database; this sample keeps the page readable when
+// the API cannot be reached.
+const SAMPLE_TAGS = [
+  { name: 'Scholarship', count: 4 },
+  { name: 'Visa', count: 3 },
+  { name: 'SOP', count: 2 },
+  { name: 'Germany', count: 2 },
+  { name: 'Rejection', count: 1 },
+];
+
+const SAMPLE_JOURNEYS = [
+  {
+    slug: 'daad-scholarship-first-try',
+    title: 'How I got the DAAD scholarship on my first attempt',
+    excerpt:
+      'Two rejections taught me more than any guide. Here is the exact timeline, the documents that mattered, and what I would do differently.',
+    author: { name: 'Nusrat Jahan', photo: null },
+    image: null,
+    tags: ['Scholarship', 'Germany'],
+    createdAt: '2026-10-28T10:20:00.000Z',
+    score: 34,
+    myVote: 0,
+    commentCount: 6,
+  },
+  {
+    slug: 'visa-interview-questions-asked',
+    title: 'Every question they asked me at the visa interview',
+    excerpt:
+      'Fifteen minutes, eight questions, one approval. I wrote them down on the bus afterwards so nobody else has to guess.',
+    author: { name: 'Tanvir Ahmed', photo: null },
+    image: null,
+    tags: ['Visa'],
+    createdAt: '2026-10-21T08:05:00.000Z',
+    score: 27,
+    myVote: 0,
+    commentCount: 4,
+  },
+  {
+    slug: 'sop-that-worked',
+    title: 'The SOP structure that worked for three UK universities',
+    excerpt:
+      'One page, four paragraphs, no generic opening. I share the full outline and the sentences I cut.',
+    author: { name: 'Farhana Karim', photo: null },
+    image: null,
+    tags: ['SOP'],
+    createdAt: '2026-10-12T14:40:00.000Z',
+    score: 19,
+    myVote: 0,
+    commentCount: 2,
+  },
+  {
+    slug: 'rejection-then-funding',
+    title: 'Rejected in April, fully funded by September',
+    excerpt:
+      'I treated the rejection as data instead of a verdict. Here is how I rebuilt the application in six weeks.',
+    author: { name: 'Sadia Islam', photo: null },
+    image: null,
+    tags: ['Rejection', 'Scholarship'],
+    createdAt: '2026-10-03T18:15:00.000Z',
+    score: 41,
+    myVote: 0,
+    commentCount: 9,
+  },
+  {
+    slug: 'living-costs-germany',
+    title: 'Real monthly budget for a student in Germany',
+    excerpt:
+      'Rent, semester fee, groceries, transport and the small costs nobody mentions — with the receipts.',
+    author: { name: 'Rakib Hasan', photo: null },
+    image: null,
+    tags: ['Germany', 'Scholarship'],
+    createdAt: '2026-09-24T09:30:00.000Z',
+    score: 22,
+    myVote: 0,
+    commentCount: 3,
+  },
+  {
+    slug: 'master-vs-phd-deciding',
+    title: 'Master’s or straight to a PhD? How I decided',
+    excerpt:
+      'A short checklist of the questions that actually changed my mind, and who I asked before signing anything.',
+    author: { name: 'Imran Chowdhury', photo: null },
+    image: null,
+    tags: ['Visa', 'SOP'],
+    createdAt: '2026-09-16T12:00:00.000Z',
+    score: 15,
+    myVote: 0,
+    commentCount: 1,
+  },
+];
+
+const filterSampleJourneys = (search, tag) => {
+  const term = String(search || '').trim().toLowerCase();
+  const tagTerm = String(tag || '').trim().toLowerCase();
+
+  return SAMPLE_JOURNEYS.filter((journey) => {
+    const matchesTag = !tagTerm || journey.tags.some((entry) => entry.toLowerCase() === tagTerm);
+    const matchesSearch =
+      !term ||
+      [journey.title, journey.excerpt, journey.author?.name, ...journey.tags]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(term));
+
+    return matchesTag && matchesSearch;
+  });
+};
+
 const SkeletonCard = () => (
   <div className="animate-pulse rounded-3xl border border-slate-200 bg-white p-6 shadow-soft">
     <div className="flex gap-2">
@@ -53,7 +160,6 @@ const CommunityPage = () => {
   const [pagination, setPagination] = useState(cachedFeed?.pagination ?? { page: 1, total: 0, totalPages: 1 });
   const [tags, setTags] = useState(getCache(TAGS_CACHE_KEY) ?? []);
   const [loading, setLoading] = useState(!cachedFeed);
-  const [error, setError] = useState('');
   const requestId = useRef(0);
 
   // Debounce typing so the feed does not refetch on every keystroke.
@@ -73,7 +179,6 @@ const CommunityPage = () => {
       if (cached) {
         setItems(cached.items);
         setPagination(cached.pagination);
-        setError('');
         setLoading(false);
         return;
       }
@@ -81,7 +186,6 @@ const CommunityPage = () => {
       const id = requestId.current + 1;
       requestId.current = id;
       setLoading(true);
-      setError('');
 
       try {
         const data = await communityApi.journeys({
@@ -94,9 +198,13 @@ const CommunityPage = () => {
         setItems(data.items || []);
         setPagination(data.pagination);
         setCache(key, { items: data.items || [], pagination: data.pagination });
-      } catch (err) {
+      } catch {
         if (requestId.current !== id) return;
-        setError(err?.response?.data?.message || 'The community feed could not be loaded. Please try again.');
+        // Database/API unavailable: fall back to the samples that match the
+        // active search/topic, just like the live feed would.
+        const sample = filterSampleJourneys(search, activeTag);
+        setItems(sample);
+        setPagination({ page: 1, limit: PAGE_SIZE, total: sample.length, totalPages: 1 });
       } finally {
         if (requestId.current === id) setLoading(false);
       }
@@ -116,7 +224,10 @@ const CommunityPage = () => {
         setTags(data);
         setCache(TAGS_CACHE_KEY, data);
       })
-      .catch(() => setTags([]));
+      .catch(() => {
+        setTags(SAMPLE_TAGS);
+        setCache(TAGS_CACHE_KEY, SAMPLE_TAGS);
+      });
     return undefined;
   }, []);
 
@@ -241,6 +352,7 @@ const CommunityPage = () => {
         </div>
       </div>
 
+
       <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm font-semibold text-text-muted" aria-live="polite">
           {loading ? 'Loading journeys…' : `${total} ${total === 1 ? 'journey' : 'journeys'}${activeTag ? ` in ${activeTag}` : ''}`}
@@ -262,17 +374,6 @@ const CommunityPage = () => {
           <span className="sr-only" role="status">
             <Loader2 className="animate-spin" /> Loading journeys
           </span>
-        </div>
-      ) : error ? (
-        <div className="mt-4 rounded-3xl border border-red-200 bg-red-50 p-10 text-center">
-          <p className="text-sm font-semibold text-red-700">{error}</p>
-          <button
-            type="button"
-            onClick={() => loadFeed(true)}
-            className="mt-4 inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-opacity-90 focus:outline-none focus:ring-2 focus:ring-accent"
-          >
-            <RefreshCw size={14} /> Try again
-          </button>
         </div>
       ) : items.length === 0 ? (
         <div className="mt-4 rounded-3xl border border-dashed border-slate-300 bg-white p-12 text-center shadow-soft">

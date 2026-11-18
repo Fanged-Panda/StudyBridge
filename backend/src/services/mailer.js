@@ -1,96 +1,109 @@
 /**
- * Shared SMTP transport for all outbound mail.
+ * Shared Gmail API transport for all outbound mail.
  *
- * Configuration comes from the environment:
- *   SMTP_HOST   required  e.g. smtp.gmail.com
- *   SMTP_PORT   optional  defaults to 587 (use 465 with SMTP_SECURE=true)
- *   SMTP_SECURE optional  "true" for implicit TLS; defaults to port === 465
- *   SMTP_USER   required  mailbox / login
- *   SMTP_PASS   required  password or app password
- *   SMTP_FROM   optional  visible sender; defaults to "StudyBridge <SMTP_USER>"
- *   USE_SMTP    optional  set to "false" to disable sending entirely
- *
- * `sendSmtpMail` never throws: it resolves with { delivered, reason } so the
+ * `sendGmailMail` never throws: it resolves with { delivered, reason } so the
  * caller can decide what to tell the user.
  */
 
-import nodemailer from 'nodemailer';
+import { google } from 'googleapis';
 
 const text = (value) => String(value ?? '').trim();
 
-function smtpSettings() {
-  const port = Number(text(process.env.SMTP_PORT) || 587);
-  const secureFlag = text(process.env.SMTP_SECURE).toLowerCase();
+function gmailSettings() {
   return {
-    host: text(process.env.SMTP_HOST),
-    port,
-    secure: secureFlag ? secureFlag === 'true' : port === 465,
-    user: text(process.env.SMTP_USER),
-    pass: process.env.SMTP_PASS ?? '',
-    from: text(process.env.SMTP_FROM) || `StudyBridge <${text(process.env.SMTP_USER)}>`,
-    disabled: text(process.env.USE_SMTP).toLowerCase() === 'false',
+    clientId: text(process.env.GMAIL_CLIENT_ID),
+    clientSecret: text(process.env.GMAIL_CLIENT_SECRET),
+    refreshToken: text(process.env.GMAIL_REFRESH_TOKEN),
+    user: text(process.env.GMAIL_USER),
+    from: text(process.env.GMAIL_FROM) || `StudyBridge <${text(process.env.GMAIL_USER)}>`,
+    disabled: text(process.env.USE_GMAIL).toLowerCase() === 'false',
   };
 }
 
-export function isSmtpConfigured() {
-  const { host, user, pass, disabled } = smtpSettings();
-  return Boolean(host && user && pass && !disabled);
+export function isGmailConfigured() {
+  const { clientId, clientSecret, refreshToken, user, disabled } = gmailSettings();
+  return Boolean(clientId && clientSecret && refreshToken && user && !disabled);
 }
 
-let transporter = null;
-let transporterKey = '';
+let gmail = null;
+let gmailKey = '';
 
-function getTransporter() {
-  if (!isSmtpConfigured()) return null;
+function getGmailClient() {
+  if (!isGmailConfigured()) return null;
 
-  const settings = smtpSettings();
-  const key = [settings.host, settings.port, settings.secure, settings.user, settings.pass].join('|');
+  const settings = gmailSettings();
+  const key = [settings.clientId, settings.clientSecret, settings.refreshToken, settings.user].join('|');
 
-  if (!transporter || transporterKey !== key) {
-    transporter = nodemailer.createTransport({
-      host: settings.host,
-      port: settings.port,
-      secure: settings.secure,
-      auth: { user: settings.user, pass: settings.pass },
-      connectionTimeout: 10_000,
-      greetingTimeout: 10_000,
-      socketTimeout: 20_000,
-    });
-    transporterKey = key;
+  if (!gmail || gmailKey !== key) {
+    const auth = new google.auth.OAuth2(settings.clientId, settings.clientSecret);
+    auth.setCredentials({ refresh_token: settings.refreshToken });
+    gmail = google.gmail({ version: 'v1', auth });
+    gmailKey = key;
   }
 
-  return transporter;
+  return gmail;
 }
 
-export async function sendSmtpMail({ to, subject, text: plainText, html, replyTo }) {
-  const transport = getTransporter();
-  if (!transport) {
-    return { delivered: false, reason: 'smtp_not_configured' };
+function encodeHeader(value) {
+  const safeValue = text(value).replace(/[\r\n]+/g, ' ');
+  if (/^[\x20-\x7e]*$/.test(safeValue)) return safeValue;
+  return `=?UTF-8?B?${Buffer.from(safeValue, 'utf8').toString('base64')}?=`;
+}
+
+function rawMessage({ to, subject, text: plainText, html, replyTo, from }) {
+  const boundary = `=_StudyBridge_${Date.now().toString(36)}_${Math.random().toString(36).slice(2)}`;
+  const headers = [
+    `From: ${encodeHeader(from)}`,
+    `To: ${encodeHeader(to)}`,
+    `Subject: ${encodeHeader(subject)}`,
+    'MIME-Version: 1.0',
+    `Content-Type: multipart/alternative; boundary="${boundary}"`,
+    ...(replyTo ? [`Reply-To: ${encodeHeader(replyTo)}`] : []),
+  ];
+  const body = [
+    `--${boundary}`,
+    'Content-Type: text/plain; charset="UTF-8"',
+    'Content-Transfer-Encoding: 8bit',
+    '',
+    String(plainText ?? ''),
+    `--${boundary}`,
+    'Content-Type: text/html; charset="UTF-8"',
+    'Content-Transfer-Encoding: 8bit',
+    '',
+    String(html ?? ''),
+    `--${boundary}--`,
+    '',
+  ].join('\r\n');
+  return `${headers.join('\r\n')}\r\n\r\n${body}`;
+}
+
+export async function sendGmailMail({ to, subject, text: plainText, html, replyTo }) {
+  const client = getGmailClient();
+  if (!client) {
+    return { delivered: false, reason: 'gmail_not_configured' };
   }
 
-  const { from } = smtpSettings();
+  const { from, user } = gmailSettings();
+  const raw = Buffer.from(rawMessage({ to, subject, text: plainText, html, replyTo, from }))
+    .toString('base64')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '');
 
   try {
-    const info = await transport.sendMail({
-      from,
-      to,
-      subject,
-      text: plainText,
-      html,
-      ...(replyTo ? { replyTo } : {}),
+    const response = await client.users.messages.send({
+      userId: user,
+      requestBody: { raw },
     });
-    return { delivered: true, reason: 'smtp_ok', id: info?.messageId || null };
+    return { delivered: true, reason: 'gmail_ok', id: response.data?.id || null };
   } catch (error) {
     const message = error?.message || 'unknown error';
-    console.error('[mail] SMTP send failed:', error?.code || '', message);
+    console.error('[mail] Gmail API send failed:', error?.code || '', message);
 
-    const rejected =
-      error?.responseCode === 550 ||
-      error?.responseCode === 553 ||
-      /recipient|mailbox|user unknown/i.test(message);
+    const status = error?.response?.status || error?.code;
     return {
       delivered: false,
-      reason: rejected ? 'invalid_recipient' : 'smtp_error',
+      reason: status === 400 && /recipient|email/i.test(message) ? 'invalid_recipient' : 'gmail_error',
       detail: message,
     };
   }

@@ -71,7 +71,7 @@ try {
   const badEmail = await call('POST', '/auth/forgot-password', { body: { email: 'not-an-email' }, ip });
   check('invalid email rejected', badEmail.status === 400, `status ${badEmail.status}`);
 
-  // @studybridge.test is not a real mailbox: SMTP relays usually accept it and
+  // @studybridge.test is not a real mailbox: local mail transports usually accept it and
   // bounce later, while a strict provider rejects it. Either way the API must
   // answer honestly instead of pretending the code was delivered.
   const requested = await call('POST', '/auth/forgot-password', { body: { email }, ip });

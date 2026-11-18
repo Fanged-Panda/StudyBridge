@@ -1,12 +1,12 @@
 /**
  * Outbound email for the community module.
  *
- * Sends over SMTP (see services/mailer.js for the SMTP_* variables). When SMTP
+ * Sends through the Gmail API (see services/mailer.js for the GMAIL_* variables). When Gmail
  * is not configured the message is logged instead of sent, so local
  * development still walks through the whole flow without a real inbox.
  */
 
-import { escapeHtml, isSmtpConfigured, sendSmtpMail } from '../../services/mailer.js';
+import { escapeHtml, isGmailConfigured, sendGmailMail } from '../../services/mailer.js';
 
 export function appUrl() {
   const raw = process.env.PUBLIC_APP_URL || process.env.APP_URL || 'http://localhost:5173';
@@ -14,7 +14,7 @@ export function appUrl() {
 }
 
 export function isEmailConfigured() {
-  return isSmtpConfigured();
+  return isGmailConfigured();
 }
 
 function wrapHtml(bodyHtml) {
@@ -36,12 +36,12 @@ export async function sendEmail({ to, subject, text, html, replyTo }) {
     html || wrapHtml(`<pre style="white-space:pre-wrap;font-family:inherit;font-size:14px;">${escapeHtml(text)}</pre>`);
 
   if (!isEmailConfigured()) {
-    console.info('[community] email not sent (SMTP_HOST/SMTP_USER/SMTP_PASS missing)');
+    console.info('[community] email not sent (GMAIL_* credentials missing)');
     console.info(`  to: ${to}\n  subject: ${subject}\n  ${String(text).split('\n').join('\n  ')}`);
     return { delivered: false, reason: 'not_configured' };
   }
 
-  return sendSmtpMail({ to, subject, text, html: messageHtml, replyTo });
+  return sendGmailMail({ to, subject, text, html: messageHtml, replyTo });
 }
 
 export async function sendContactEmail({ journey, senderName, senderEmail, message }) {

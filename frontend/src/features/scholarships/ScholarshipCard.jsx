@@ -1,7 +1,7 @@
 import Badge from '../../components/ui/Badge';
 import Button from '../../components/ui/Button';
 import Card from '../../components/ui/Card';
-import { Award, Calendar, CheckCircle2, Globe, Sparkles, ExternalLink, BadgeCheck, Edit3, RefreshCw, Trash2 } from 'lucide-react';
+import { Award, Calendar, CheckCircle2, Globe, Sparkles, ExternalLink, Edit3, RefreshCw, Trash2 } from 'lucide-react';
 
 const currencyFormatter = new Intl.NumberFormat('en-US', {
   style: 'currency',
@@ -48,11 +48,6 @@ const ScholarshipCard = ({
           </div>
 
           <div className="flex shrink-0 items-center gap-1.5">
-            {!isAdmin && (
-              <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700">
-                <BadgeCheck className="h-3 w-3" /> Live
-              </span>
-            )}
             {!isAdmin && websiteUrl && (
               <a
                 href={websiteUrl}

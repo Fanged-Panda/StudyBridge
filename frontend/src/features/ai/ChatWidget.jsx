@@ -13,6 +13,44 @@ const initialMessages = [
   },
 ];
 
+// The chat survives leaving the page and coming back (and a reload of this tab).
+const CHAT_STORAGE_KEY = 'studybridge:chatbot:messages';
+
+const getChatStorageKey = () => {
+  try {
+    const profile = JSON.parse(localStorage.getItem('userProfile') || '{}');
+    return profile.id ? `${CHAT_STORAGE_KEY}:${profile.id}` : CHAT_STORAGE_KEY;
+  } catch {
+    return CHAT_STORAGE_KEY;
+  }
+};
+
+const readStoredMessages = () => {
+  try {
+    const parsed = JSON.parse(sessionStorage.getItem(getChatStorageKey()) || 'null');
+    if (!Array.isArray(parsed) || parsed.length === 0) return null;
+    const valid = parsed.filter(
+      (entry) =>
+        entry &&
+        (entry.role === 'assistant' || entry.role === 'user') &&
+        typeof entry.text === 'string' &&
+        entry.text.trim(),
+    );
+    return valid.length > 0 ? valid : null;
+  } catch {
+    // Ignore a corrupt or unavailable store and start a fresh conversation.
+  }
+  return null;
+};
+
+const writeStoredMessages = (messages) => {
+  try {
+    sessionStorage.setItem(getChatStorageKey(), JSON.stringify(messages));
+  } catch {
+    // Storage can be full or blocked; the in-memory conversation still works.
+  }
+};
+
 const STARTER_TOPICS = [
   {
     icon: '🎯',
@@ -41,13 +79,18 @@ const STARTER_TOPICS = [
 ];
 
 const ChatWidget = ({ initialPrompt = '', fitLabel = '' }) => {
-  const [messages, setMessages] = useState(initialMessages);
+  const [messages, setMessages] = useState(() => readStoredMessages() || initialMessages);
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const chatContainerRef = useRef(null);
   const inputRef = useRef(null);
   const lastPromptIndexRef = useRef(null);
   const autoFitSentRef = useRef(false);
+
+  // Remember the transcript so navigating away and back keeps the conversation.
+  useEffect(() => {
+    writeStoredMessages(messages);
+  }, [messages]);
 
   // Smoothly scroll to target message or bottom
   const scrollToTarget = (index) => {
@@ -98,13 +141,20 @@ const ChatWidget = ({ initialPrompt = '', fitLabel = '' }) => {
     setLoading(true);
 
     try {
-      const { data } = await api.post('/chat', { message: textToSend, history });
-      setMessages((current) => [...current, { role: 'assistant', text: data.reply }]);
+      const { data } = await api.post('/chat', { message: textToSend, history }, { timeout: 70000 });
+      if (!data?.reply || typeof data.reply !== 'string') {
+        throw new Error('The AI service returned an empty response.');
+      }
+      setMessages((current) => [...current, { role: 'assistant', text: data.reply.trim() }]);
     } catch (err) {
-      const errorText =
-        err.response?.status === 401
+      const errorText = err.code === 'ECONNABORTED'
+        ? 'The AI advisor took too long to respond. Please try again.'
+        : err.response?.status === 401
           ? 'Please log in to chat with the AI Advisor.'
-          : err.response?.data?.message || 'Something went wrong while processing your request. Please try again.';
+          : err.response?.data?.message ||
+            (err.message === 'The AI service returned an empty response.'
+              ? err.message
+              : 'Something went wrong while processing your request. Please try again.');
       setMessages((current) => [...current, { role: 'assistant', text: errorText }]);
     } finally {
       setLoading(false);
@@ -117,6 +167,8 @@ const ChatWidget = ({ initialPrompt = '', fitLabel = '' }) => {
   useEffect(() => {
     if (!initialPrompt || autoFitSentRef.current) return undefined;
     autoFitSentRef.current = true;
+    // Do not replay a fit check over a conversation that is already in progress.
+    if (messages.length > 1) return undefined;
     handleSend(initialPrompt);
     return undefined;
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -126,6 +178,11 @@ const ChatWidget = ({ initialPrompt = '', fitLabel = '' }) => {
     setMessages(initialMessages);
     setMessage('');
     lastPromptIndexRef.current = null;
+    try {
+      sessionStorage.removeItem(getChatStorageKey());
+    } catch {
+      // The in-memory reset still works if session storage is unavailable.
+    }
     if (chatContainerRef.current) {
       chatContainerRef.current.scrollTo({ top: 0, behavior: 'smooth' });
     }
@@ -133,7 +190,7 @@ const ChatWidget = ({ initialPrompt = '', fitLabel = '' }) => {
   };
 
   return (
-    <Card className="flex h-[calc(100vh-210px)] min-h-[440px] max-h-[740px] flex-col overflow-hidden border border-slate-200/90 bg-white p-0 shadow-md">
+    <Card className="flex h-[calc(100vh-13.2rem)] min-h-[440px] max-h-[740px] flex-col overflow-hidden border border-slate-200/90 bg-white p-0 shadow-md">
       {/* Top Action Bar */}
       <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/70 px-4 py-2.5 sm:px-5 sm:py-3">
         <div className="flex items-center gap-2.5">

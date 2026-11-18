@@ -1,0 +1,24 @@
+<mxfile host="app.diagrams.net" modified="2026-11-16T14:31:00.000Z" agent="StudyBridge" version="24.7.17">
+  <diagram id="deployment-studybridge" name="Deployment Diagram">
+    <mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" page="1" pageScale="1" pageWidth="1600" pageHeight="1100">
+      <root>
+        <mxCell id="0"/><mxCell id="1" parent="0"/>
+        <mxCell id="browser" value="&lt;b&gt;User Device&lt;/b&gt;&lt;br&gt;Web browser&lt;br&gt;React/Vite SPA" style="shape=mxgraph.networks.cloud;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=14;" vertex="1" parent="1"><mxGeometry x="60" y="180" width="210" height="120" as="geometry"/></mxCell>
+        <mxCell id="frontend" value="&lt;b&gt;Frontend hosting&lt;/b&gt;&lt;br&gt;Static React build&lt;br&gt;Pages, feature components&lt;br&gt;Vite assets" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.cloudfront;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=13;" vertex="1" parent="1"><mxGeometry x="370" y="180" width="230" height="130" as="geometry"/></mxCell>
+        <mxCell id="api" value="&lt;b&gt;Backend service&lt;/b&gt;&lt;br&gt;Node.js + Express&lt;br&gt;REST API /api&lt;br&gt;JWT auth, modules, middleware" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.lambda;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=13;" vertex="1" parent="1"><mxGeometry x="720" y="160" width="250" height="160" as="geometry"/></mxCell>
+        <mxCell id="db" value="&lt;b&gt;PostgreSQL&lt;/b&gt;&lt;br&gt;Prisma ORM/client&lt;br&gt;Students, universities,&lt;br&gt;scholarships, journeys, sync data" style="shape=cylinder;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=13;" vertex="1" parent="1"><mxGeometry x="1110" y="180" width="220" height="140" as="geometry"/></mxCell>
+        <mxCell id="cron" value="&lt;b&gt;Render Cron Jobs&lt;/b&gt;&lt;br&gt;Scheduled data synchronization&lt;br&gt;university, professor, scholarship jobs" style="shape=process;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=13;" vertex="1" parent="1"><mxGeometry x="720" y="470" width="250" height="125" as="geometry"/></mxCell>
+        <mxCell id="sources" value="&lt;b&gt;External data sources&lt;/b&gt;&lt;br&gt;University and scholarship websites&lt;br&gt;OpenAlex research metrics" style="shape=mxgraph.networks.cloud;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=13;" vertex="1" parent="1"><mxGeometry x="350" y="470" width="250" height="125" as="geometry"/></mxCell>
+        <mxCell id="ai" value="&lt;b&gt;AI providers&lt;/b&gt;&lt;br&gt;Google Gemini&lt;br&gt;Groq / OpenAI integrations" style="shape=mxgraph.networks.cloud;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=13;" vertex="1" parent="1"><mxGeometry x="1110" y="470" width="220" height="125" as="geometry"/></mxCell>
+        <mxCell id="mail" value="&lt;b&gt;Email provider&lt;/b&gt;&lt;br&gt;SMTP via Nodemailer&lt;br&gt;verification and reset messages" style="shape=mxgraph.networks.cloud;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=13;" vertex="1" parent="1"><mxGeometry x="1110" y="690" width="220" height="120" as="geometry"/></mxCell>
+        <mxCell id="b1" value="HTTPS" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;" edge="1" parent="1" source="browser" target="frontend"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="b2" value="HTTPS / REST" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;" edge="1" parent="1" source="frontend" target="api"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="b3" value="Prisma / TCP" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;" edge="1" parent="1" source="api" target="db"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="b4" value="Prisma / TCP" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;" edge="1" parent="1" source="cron" target="db"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="b5" value="Fetch / scrape" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;" edge="1" parent="1" source="cron" target="sources"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="b6" value="AI API" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;" edge="1" parent="1" source="api" target="ai"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="b7" value="SMTP" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;" edge="1" parent="1" source="api" target="mail"><mxGeometry relative="1" as="geometry"/></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

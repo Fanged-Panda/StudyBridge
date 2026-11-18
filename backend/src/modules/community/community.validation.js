@@ -232,7 +232,7 @@ export function validateComment(payload = {}, memberName = '') {
   return { ok: Object.keys(errors).length === 0, errors, data: { authorName, body } };
 }
 
-/** Single line subjects must never contain newlines (SMTP header injection). */
+/** Single line subjects must never contain newlines (header injection). */
 export function safeSubject(value) {
   return cleanText(value).replace(/[\r\n]+/g, ' ').slice(0, LIMITS.subject);
 }

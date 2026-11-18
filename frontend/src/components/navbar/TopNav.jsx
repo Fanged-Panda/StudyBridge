@@ -5,6 +5,7 @@ import { beginLogout } from '../../App';
 import api from '../../services/api';
 import NotificationDropdown from './NotificationDropdown';
 import Button from '../ui/Button';
+import { PRIMARY_NAV_ITEMS } from '../../navigationOrder';
 
 const DEFAULT_AVATAR =
   'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop&crop=face';
@@ -153,16 +154,8 @@ const TopNav = () => {
 
   const effectiveAvatar = userRole === 'admin' ? HACKER_AVATAR : avatar;
 
-  const EXPLORE_PATHS = ['/universities', '/scholarships', '/professors'];
-
   // The admin portal lives behind the avatar, not in the nav.
-  const navItems = [
-    { to: '/', label: 'Home' },
-    { to: '/universities', label: 'Explore', matches: EXPLORE_PATHS },
-    ...(isLoggedIn ? [{ to: '/wordlab', label: 'WordLab' }] : []),
-    { to: '/community', label: 'Community' },
-    { to: '/chatbot', label: 'Chatbot' },
-  ];
+  const navItems = PRIMARY_NAV_ITEMS.filter((item) => isLoggedIn || item.to !== '/wordlab');
 
   return (
     <header
@@ -170,17 +163,17 @@ const TopNav = () => {
         scrolled ? 'h-16 shadow-sm' : 'h-20'
       }`}
     >
-      <div className="mx-auto flex w-full max-w-[1200px] items-center justify-between px-8">
+      <div className="mx-auto flex w-full max-w-[1200px] items-center justify-between gap-2 px-4 sm:px-6 lg:px-8">
         {/* Logo */}
-        <div className="flex flex-1 items-center">
-          <Link to="/" className="flex items-center gap-2.5 text-2xl font-extrabold tracking-tight text-primary">
-            <img src="/logo-192.png" alt="StudyBridge" className="h-8 w-8 rounded-lg object-contain shadow-xs" />
-            <span>StudyBridge</span>
+        <div className="flex shrink-0 items-center">
+          <Link to="/" className="flex shrink-0 items-center gap-2 text-xl font-extrabold tracking-tight text-primary lg:gap-2.5 lg:text-2xl">
+            <img src="/logo-192.png" alt="StudyBridge" className="h-8 w-8 shrink-0 rounded-lg object-contain shadow-xs" />
+            <span className="whitespace-nowrap">StudyBridge</span>
           </Link>
         </div>
 
         {/* Desktop Nav */}
-        <nav className="hidden flex-1 items-center justify-center gap-3 md:flex lg:gap-6">
+        <nav className="hidden min-w-0 flex-1 items-center justify-center gap-3 md:flex lg:gap-6">
           {navItems.map((item) => {
             const active = item.matches ? item.matches.some((path) => location.pathname.startsWith(path)) : isActive(item.to);
             return (
@@ -200,7 +193,7 @@ const TopNav = () => {
         </nav>
 
         {/* Right */}
-        <div className="flex flex-1 items-center justify-end gap-3 sm:gap-4">
+        <div className="flex shrink-0 items-center justify-end gap-3 sm:gap-4">
           {!isLoggedIn ? (
             <Button
               to="/login"
